@@ -8,18 +8,14 @@ EnergyChain brings composable, vendor-neutral energy data types, connectors, saf
 
 ## Installation
 
-After this distribution has been published to PyPI:
+```bash
+python -m pip install energychain
+```
+
+To pin this release:
 
 ```bash
 python -m pip install energychain==0.1.0
-```
-
-Until publishing is confirmed:
-
-```bash
-python -m pip install .
-# or install a downloaded wheel:
-python -m pip install dist/energychain-0.1.0-py3-none-any.whl
 ```
 
 Requires Python 3.10 or newer. The core package uses **only Python standard-library runtime dependencies**.
@@ -97,4 +93,4 @@ See [architecture](docs/architecture.md) for contract boundaries and limitations
 
 ## Licensing and safety
 
-No open-source licence is granted by this draft package. The copyright holder must select distribution/licensing terms before a public release. Publishing a package to PyPI makes its distribution artifacts publicly downloadable, even if the code repository is private. Alpha-quality software: not warranted for physically controlling energy equipment.
+EnergyChain is distributed under the [MIT License](LICENSE). Published wheels and source archives are publicly downloadable even though the development repository is private. Alpha-quality software: not warranted for physically controlling energy equipment.

@@ -7,14 +7,12 @@
 The repository is the existing **private** https://github.com/Atanseiye/energychain.
 Continue its history; do not recreate it or change its visibility.
 
-No distribution license has been selected. The owner must confirm the right to
-distribute all bundled source and select the licensing terms. Add the approved
-`LICENSE`, corresponding `[project]` license metadata and license-file inclusion in
-`pyproject.toml`, then update the README's draft licensing notice. Do not infer an
-open-source license from the fact that this is an SDK. If using PEP 639 license
-metadata, require `setuptools>=77` in `[build-system]`.
+The owner selected the **MIT License** and approved public SDK distribution on
+26 October 2026. `LICENSE` contains the terms; `[project]` declares `license = "MIT"`
+and `license-files = ["LICENSE"]`. The build requires `setuptools>=77` for PEP 639
+license metadata. Keep the license in both wheels and source archives.
 
-Confirm public distribution of the wheel **and source archive**. The publishing
+Public distribution includes the wheel **and source archive**. The publishing
 workflow fails before upload if the built artifacts lack license metadata/files.
 This is an artifact check, not proof of copyright ownership or legal clearance.
 

@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "energychain"
+version = "0.1.0"
+description = "Composable, safety-first Python framework for AI-native energy applications"
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [{name = "EnergyChain Contributors"}]
+keywords = ["energy", "solar", "battery", "AI", "agents", "energychain", "SDK"]
+classifiers = ["Development Status :: 3 - Alpha", "Intended Audience :: Developers", "Programming Language :: Python :: 3", "Programming Language :: Python :: 3.10", "Programming Language :: Python :: 3.11", "Programming Language :: Python :: 3.12", "Programming Language :: Python :: 3.13", "Topic :: Scientific/Engineering", "Topic :: Software Development :: Libraries :: Python Modules"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "build>=1", "twine>=5", "ruff>=0.6"]
+
+[project.urls]
+Homepage = "https://github.com/Atanseiye/energychain"
+Repository = "https://github.com/Atanseiye/energychain"
+Issues = "https://github.com/Atanseiye/energychain/issues"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100

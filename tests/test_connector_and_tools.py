@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta, timezone
 import pytest
-from energychain import (EnergyChain, EnergySite, Principal, Permission, SafetyPolicy, Approval,
-                         ToolSpec, ToolRegistry, EnergyAgent, CallableTextModel, HybridSiteSimulator)
+from energychain import (EnergyChain, Principal, Permission, Approval,
+                         ToolSpec, ToolRegistry, CallableTextModel, HybridSiteSimulator)
 from energychain.exceptions import PermissionDenied, ApprovalRequired, ValidationError
 
 
@@ -72,3 +72,28 @@ def test_multiple_sites_are_isolated_even_when_asset_is_known():
     permitted = Principal("second", frozenset({"other-site"}))
     assert c.tools.invoke("get_asset_state", permitted, "other-site", arguments={
         "asset_id": "other-site-battery", "metric": "state_of_charge_pct"}).value > 0
+
+
+def test_simulator_values_are_independent_of_timestamp_offset():
+    instant = datetime(2026, 10, 26, 12, tzinfo=timezone.utc)
+    offset = timezone(timedelta(hours=5, minutes=30))
+    utc = HybridSiteSimulator(clock=lambda: instant)
+    local = HybridSiteSimulator(clock=lambda: instant.astimezone(offset))
+    assert utc.read("demo-solar", "power_w").value == local.read("demo-solar", "power_w").value
+    assert [r.value for r in utc.history("demo-solar", "power_w", instant, instant)] == [
+        r.value for r in local.history(
+            "demo-solar", "power_w", instant.astimezone(offset), instant.astimezone(offset))]
+
+
+def test_registry_rejects_duplicate_sites_within_one_connector():
+    class DuplicateSiteConnector(HybridSiteSimulator):
+        def sites(self):
+            return [self.site, self.site]
+
+        def assets(self, site_id):
+            return []
+
+    c = EnergyChain()
+    with pytest.raises(ValidationError, match="duplicate site id"):
+        c.add_connector("ambiguous", DuplicateSiteConnector())
+    assert c.connectors.sites() == []

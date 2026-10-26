@@ -16,11 +16,14 @@ class ConnectorRegistry:
         # Reject duplicate site/asset identifiers across providers to avoid ambiguous routing.
         previous_sites = {s.id for s in self.sites()}
         previous_assets = {a.id for a in self.assets()}
-        for site in connector.sites():
-            if site.id in previous_sites:
+        sites = connector.sites()
+        new_site_ids = set()
+        for site in sites:
+            if site.id in previous_sites or site.id in new_site_ids:
                 raise ValidationError(f"duplicate site id: {site.id}")
+            new_site_ids.add(site.id)
         new_asset_ids = set()
-        for site in connector.sites():
+        for site in sites:
             for asset in connector.assets(site.id):
                 if asset.site_id != site.id:
                     raise ValidationError(f"connector asset has mismatched site: {asset.id}")

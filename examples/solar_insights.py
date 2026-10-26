@@ -1,6 +1,6 @@
 """Synthetic 24-hour solar generation insights without a model or vendor credential."""
 from datetime import datetime, timedelta, timezone
-from energychain import EnergyChain, Metric, simple_average_forecast
+from energychain import EnergyChain, simple_average_forecast
 
 chain = EnergyChain.demo()
 principal = chain.principal("demo", allowed_sites={"demo-site"})

@@ -44,7 +44,8 @@ class SQLiteEnergyMemory(EnergyMemory):
 
     def history(self, site_id: str, asset_id: str, metric: str, start: datetime,
                 end: datetime) -> list[EnergyReading]:
-        ensure_aware(start); ensure_aware(end)
+        ensure_aware(start)
+        ensure_aware(end)
         # Chronological filtering in Python ensures correct comparison of offset-aware ISO strings.
         records = self._db.execute("SELECT asset,metric,value,time,source,quality,metadata FROM readings WHERE site=? AND asset=? AND metric=?", (site_id, asset_id, Metric(metric).value)).fetchall()
         out = [EnergyReading(a, Metric(m), v, datetime.fromisoformat(t), s, q, json.loads(md))

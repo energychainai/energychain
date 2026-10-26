@@ -1,4 +1,4 @@
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 import pytest
 from energychain import CSVConnector, EnergySite, EnergyAsset, AssetKind, Metric, EnergyChain
 from energychain.exceptions import ValidationError
@@ -23,3 +23,16 @@ def test_csv_rejects_invalid_timestamp(tmp_path):
     file.write_text("asset_id,metric,value,timestamp,source\na,power_w,30,2026-10-25T10:00:00,export\n")
     with pytest.raises(ValidationError):
         CSVConnector.from_csv(file, site=EnergySite("site", "Site"), assets=[EnergyAsset("a", "site", "A", AssetKind.LOAD)])
+
+
+@pytest.mark.parametrize("timestamp", ["2026-10-25T10:00:00Z", "2026-10-25T11:00:00+01:00"])
+def test_csv_supports_iso_utc_and_offsets(tmp_path, timestamp):
+    file = tmp_path / "utc.csv"
+    file.write_text(
+        "asset_id,metric,value,timestamp,source\n"
+        f"a,power_w,30,{timestamp},export\n", encoding="utf-8")
+    connector = CSVConnector.from_csv(
+        file, site=EnergySite("site", "Site"),
+        assets=[EnergyAsset("a", "site", "A", AssetKind.LOAD)])
+    assert connector.read("a", Metric.POWER_W).timestamp == datetime(
+        2026, 10, 25, 10, tzinfo=timezone.utc)

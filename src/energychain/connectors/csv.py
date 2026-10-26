@@ -9,7 +9,7 @@ from datetime import datetime
 from pathlib import Path
 from energychain.connectors.base import EnergyConnector
 from energychain.exceptions import AssetNotFound, ValidationError
-from energychain.models import (AssetKind, Capability, EnergyAsset, EnergyReading,
+from energychain.models import (EnergyAsset, EnergyReading,
                                EnergySite, Metric, ensure_aware)
 
 
@@ -38,9 +38,12 @@ class CSVConnector(EnergyConnector):
             records = []
             for i, row in enumerate(reader, start=2):
                 try:
+                    timestamp = row["timestamp"]
+                    if timestamp.endswith("Z"):
+                        timestamp = timestamp[:-1] + "+00:00"
                     records.append(EnergyReading(
                         asset_id=row["asset_id"], metric=Metric(row["metric"]),
-                        value=float(row["value"]), timestamp=datetime.fromisoformat(row["timestamp"]),
+                        value=float(row["value"]), timestamp=datetime.fromisoformat(timestamp),
                         source=row["source"], quality=row.get("quality") or "measured"))
                 except (ValueError, TypeError, KeyError) as exc:
                     raise ValidationError(f"invalid energy CSV row {i}: {exc}") from exc
@@ -61,7 +64,8 @@ class CSVConnector(EnergyConnector):
         return results[-1]
 
     def history(self, asset_id: str, metric: Metric, start: datetime, end: datetime) -> list[EnergyReading]:
-        ensure_aware(start); ensure_aware(end)
+        ensure_aware(start)
+        ensure_aware(end)
         if asset_id not in {a.id for a in self._assets}:
             raise AssetNotFound(asset_id)
         if end < start:

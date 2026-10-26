@@ -23,7 +23,8 @@ class InMemoryEnergyMemory(EnergyMemory):
 
     def history(self, site_id: str, asset_id: str, metric: str, start: datetime,
                 end: datetime) -> list[EnergyReading]:
-        ensure_aware(start); ensure_aware(end)
+        ensure_aware(start)
+        ensure_aware(end)
         return sorted((r for r in self._readings[site_id] if r.asset_id == asset_id
                        and r.metric == Metric(metric) and start <= r.timestamp <= end),
                       key=lambda r: r.timestamp)

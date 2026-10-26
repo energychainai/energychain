@@ -4,6 +4,7 @@ Approval issuance must occur in a separate, trusted application service after a 
 approval. Keeping this issuer in the same untrusted client process is NOT production security.
 """
 from __future__ import annotations
+from datetime import datetime
 import base64
 import hashlib
 import hmac

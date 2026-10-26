@@ -52,7 +52,7 @@ def test_telemetry_rejects_cross_site_and_deduplicates():
 
 def test_event_bus_is_bounded_and_handles_bad_subscriber():
     chain=EnergyChain.demo()
-    bad=chain.events.subscribe(lambda e:1/0)
+    chain.events.subscribe(lambda e:1/0)
     hits=[]
     good=chain.events.subscribe(hits.append)
     event=EnergyEvent("id","demo-site","warning","Battery low")

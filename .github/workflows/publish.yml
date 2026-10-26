@@ -4,30 +4,80 @@ on:
     types: [published]
 permissions:
   contents: read
+concurrency:
+  group: pypi-publish
+  cancel-in-progress: false
 jobs:
+  test:
+    if: github.repository == 'Atanseiye/energychain' && !github.event.release.prerelease
+    uses: ./.github/workflows/ci.yml
   build:
+    needs: test
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: '3.12'
-      - run: python -m pip install build twine
-      - run: python -m build
-      - run: python -m twine check dist/*
-      - uses: actions/upload-artifact@v4
+      - name: Ensure release comes from main
+        run: git merge-base --is-ancestor HEAD origin/main
+      - name: Install build tools
+        run: python -m pip install build twine
+      - name: Build and validate release
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          python -m build
+          python -m twine check --strict dist/*
+          python scripts/check_dist.py --tag "$RELEASE_TAG" --require-license
+      - name: Test the exact wheel to be published
+        run: |
+          python -m venv .wheel-test
+          .wheel-test/bin/python -I -m pip install --no-index --no-deps dist/*.whl
+          .wheel-test/bin/python -I -m pip check
+          .wheel-test/bin/python -I scripts/smoke_test.py
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: python-distributions
           path: dist/
+          if-no-files-found: error
+          retention-days: 7
   publish:
     needs: build
     runs-on: ubuntu-latest
-    environment: pypi
+    timeout-minutes: 10
+    environment:
+      name: pypi
+      url: https://pypi.org/project/energychain/
     permissions:
       id-token: write
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: python-distributions
           path: dist/
-      - uses: pypa/gh-action-pypi-publish@release/v1
+      - name: Publish using PyPI Trusted Publishing
+        uses: pypa/gh-action-pypi-publish@7245906fb61fa33a13554f9d5fb856fe61758086 # release/v1
+        with:
+          print-hash: true
+  verify:
+    needs: publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: python-distributions
+          path: dist/
+      - name: Verify unpinned installation from official PyPI
+        run: python scripts/verify_pypi.py

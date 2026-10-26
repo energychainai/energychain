@@ -1,12 +1,12 @@
 """Ready-to-use read and analytics tools; no physical execution tools in v0.1."""
 from __future__ import annotations
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Any
 from energychain.connectors import ConnectorRegistry
 from energychain.exceptions import PermissionDenied, ValidationError
 from energychain.intelligence import estimate_battery_runtime, estimate_energy_cost
 from energychain.memory import EnergyMemory
-from energychain.models import AssetKind, EnergyAsset, EnergyReading, Metric, Tariff, utcnow
+from energychain.models import AssetKind, EnergyAsset, EnergyReading, Metric, Tariff
 from energychain.security import Permission
 from .base import ToolRegistry, ToolSpec
 
@@ -40,7 +40,8 @@ def install_builtin_tools(tools: ToolRegistry, connectors: ConnectorRegistry,
             raise ValidationError("asset is not a battery")
         soc = connector.read(asset_id, Metric.STATE_OF_CHARGE_PCT)
         capacity = connector.read(asset_id, Metric.CAPACITY_WH)
-        memory.add_reading(site_id, soc); memory.add_reading(site_id, capacity)
+        memory.add_reading(site_id, soc)
+        memory.add_reading(site_id, capacity)
         return {"state_of_charge": soc, "capacity": capacity}
 
     def estimate_runtime(*, site_id: str, battery_id: str, load_w: float,

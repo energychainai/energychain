@@ -32,7 +32,8 @@ class HybridSiteSimulator(EnergyConnector):
         return list(self._assets) if site_id == self.site.id else []
 
     def _value(self, asset_id: str, metric: Metric, ts: datetime) -> float:
-        hour = ts.astimezone(timezone.utc).hour + ts.minute / 60
+        utc = ts.astimezone(timezone.utc)
+        hour = utc.hour + utc.minute / 60
         sun = max(0.0, sin(pi * (hour - 6) / 12))
         values = {
             (self._prefix + "solar", Metric.POWER_W): round(3800 * sun, 2),
@@ -54,7 +55,8 @@ class HybridSiteSimulator(EnergyConnector):
         return EnergyReading(asset_id, Metric(metric), self._value(asset_id, Metric(metric), ts), ts, "hybrid-simulator", "simulated")
 
     def history(self, asset_id: str, metric: Metric, start: datetime, end: datetime) -> list[EnergyReading]:
-        ensure_aware(start); ensure_aware(end)
+        ensure_aware(start)
+        ensure_aware(end)
         if end < start:
             raise ValidationError("end precedes start")
         if (end - start).total_seconds() > 31 * 86400:

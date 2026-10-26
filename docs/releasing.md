@@ -2,17 +2,89 @@
 
 **Do not claim `pip install energychain` works until the release exists on https://pypi.org/project/energychain/** and the installed package has been smoke-tested using a clean environment.
 
-1. Decide the distribution licence explicitly (do not assume MIT merely because it is an SDK). Confirm the `energychain` distribution name is available on **real PyPI**. If someone else owns it, choose a different package name; do not upload under someone else's project.
-2. Build and test the exact release commit: `python -m pip install -e '.[dev]' && python -m pytest -q && python -m build && python -m twine check dist/*`.
-3. Create a **private** GitHub repository named `energychain` and upload the reviewed source. **Do not put API keys or publishing credentials in Git history.** GitHub Actions are available on eligible private repositories.
-4. In your PyPI account, go to https://pypi.org/manage/account/publishing/ and configure a pending **GitHub Trusted Publisher** matching:
-   - Distribution: `energychain`
-   - GitHub owner: `Atanseiye` (only if that is the repo owner)
-   - Repository: `energychain`
-   - Workflow filename: `publish.yml`
-   - GitHub environment: `pypi`
-5. In GitHub repository **Settings → Environments**, create `pypi`, and protect deployments if desired. Publishing job uses OIDC; no long-lived PyPI API token is stored in GitHub.
-6. Create and publish a GitHub Release tagged `v0.1.0` after checks pass. That triggers `.github/workflows/publish.yml`.
-7. Check the GitHub Actions outcome and verify https://pypi.org/project/energychain/0.1.0/. Test in a clean virtualenv: `python -m pip install energychain==0.1.0` then `python -c "import energychain; print(energychain.__version__)"`.
+## Owner decisions before the first public release
+
+The repository is the existing **private** https://github.com/Atanseiye/energychain.
+Continue its history; do not recreate it or change its visibility.
+
+No distribution license has been selected. The owner must confirm the right to
+distribute all bundled source and select the licensing terms. Add the approved
+`LICENSE`, corresponding `[project]` license metadata and license-file inclusion in
+`pyproject.toml`, then update the README's draft licensing notice. Do not infer an
+open-source license from the fact that this is an SDK. If using PEP 639 license
+metadata, require `setuptools>=77` in `[build-system]`.
+
+Confirm public distribution of the wheel **and source archive**. The publishing
+workflow fails before upload if the built artifacts lack license metadata/files.
+This is an artifact check, not proof of copyright ownership or legal clearance.
+
+## Account setup
+
+1. Check `https://pypi.org/pypi/energychain/json` immediately before publishing.
+   A 404 means no published project is visible; it does not guarantee the name is
+   reservable. If another party owns it, stop rather than uploading a substitute.
+2. Sign in at https://pypi.org/manage/account/publishing/ and add a pending GitHub
+   Trusted Publisher with these exact values:
+
+   | Field | Value |
+   | --- | --- |
+   | PyPI project | `energychain` |
+   | GitHub owner | `Atanseiye` |
+   | Repository | `energychain` |
+   | Workflow filename | `publish.yml` |
+   | Environment | `pypi` |
+
+   A pending publisher does not reserve the name. For an existing project owned by
+   this account, configure the publisher in that project's Publishing settings.
+3. In repository **Settings → Environments**, create `pypi`. Keep the repository
+   private. Set deployment rules/reviewers supported by the account as appropriate.
+   The workflow grants `id-token: write` only to the isolated publishing job;
+   no PyPI password or long-lived token belongs in the repository or its secrets.
+
+These account steps require authenticated owner access. A committed workflow does
+not configure the pending publisher in PyPI or verify the environment's settings.
+
+## Validate the release commit
+
+```bash
+python -m pip install -e '.[dev]'
+python -m ruff check --isolated --select E4,E7,E9,F src tests scripts examples
+python -m pytest -q
+python -m build
+python -m twine check --strict dist/*
+python scripts/check_dist.py --tag v0.1.0 --require-license
+```
+
+Start with an empty `dist/` directory. `python -m build` builds the wheel from the
+source archive, and `check_dist.py` checks that both contain the same SDK and
+matching name/version metadata. The license check is mandatory for publishing.
+Omit only `--require-license` when checking technical readiness before the owner
+has selected terms; that does not authorize a public release.
+
+Install the built wheel into a new virtualenv with `--no-index --no-deps`, then run
+`python -I scripts/smoke_test.py` using that environment's Python. `-I` prevents the
+checkout or `PYTHONPATH` from masking an incomplete wheel. CI does this on Python
+3.10–3.13 on Linux and Python 3.12 on Windows.
+
+## Publish and prove installation
+
+1. Ensure the exact release commit is on `main`, its CI is green, licensing is
+   settled and PyPI/account setup is complete.
+2. Create and publish a non-prerelease GitHub Release tagged `v0.1.0` at that commit.
+   `.github/workflows/publish.yml` repeats CI, verifies main ancestry and tag/version
+   agreement, validates licensing and tests the exact wheel before uploading.
+3. The separate `publish` job obtains short-lived PyPI credentials through GitHub
+   OIDC and publishes the previously tested artifacts. Actions are pinned to full
+   commit hashes. No code build or checkout runs in the OIDC-enabled job.
+4. The `verify` job runs `python scripts/verify_pypi.py`. It checks official PyPI
+   metadata and SHA256 hashes against the tested artifacts, creates a new Python
+   environment, and performs an **unpinned** install of `energychain` using only
+   `https://pypi.org/simple/`, without cache, local wheels or extra indexes. It checks
+   the installed version, official download URL, wheel hash, imports and SDK smoke
+   behavior. Success is reported only after that check passes.
+
+If upload succeeds but verification fails, inspect the verification error before
+retrying. PyPI release filenames cannot be overwritten. After a successful upload,
+rerun only the failed verification job rather than uploading the same files again.
 
 A **private GitHub repository does not make a PyPI distribution private**. Published wheels/sdists and their source can generally be downloaded by anyone. Decide whether the package source is suitable for public distribution before publishing.

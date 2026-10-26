@@ -2,6 +2,7 @@
 from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Callable
+from time import perf_counter
 from energychain.exceptions import ToolError
 from energychain.observability import InMemoryTracer, TraceEvent
 from energychain.security import Approval, Permission, Principal, SafetyPolicy
@@ -14,6 +15,7 @@ class ToolSpec:
     permission: Permission
     handler: Callable[..., Any]
     # For exact site/asset checks, tools supply site_id after server-side resolution.
+    needs_principal: bool = False
 
 
 class ToolRegistry:
@@ -33,18 +35,29 @@ class ToolRegistry:
                  "permission": t.permission.value} for t in self._tools.values()]
 
     def invoke(self, name: str, principal: Principal, site_id: str, *,
-               arguments: dict[str, Any] | None = None, approval: Approval | None = None) -> Any:
+               arguments: dict[str, Any] | None = None, approval: Approval | str | None = None) -> Any:
         try:
             spec = self._tools[name]
         except KeyError as exc:
             raise ToolError(f"unknown tool: {name}") from exc
         # Do not accept unverified, arbitrary site_id as authority: handlers additionally
         # route assets and verify that their owner site equals this authorized site.
+        t0 = perf_counter()
         try:
-            self.policy.authorize(principal, site_id, spec.permission, action=name, approval=approval)
-            result = spec.handler(site_id=site_id, **(arguments or {}))
-            self.tracer.record(TraceEvent(name, principal.id, site_id, "success"))
+            self.policy.authorize(principal, site_id, spec.permission, action=name, approval=approval,
+                                  parameters=arguments)
+            supplied = arguments or {}
+            if "site_id" in supplied or "principal" in supplied:
+                raise ToolError("reserved tool scope arguments may not be supplied")
+            kwargs = {"site_id": site_id, **supplied}
+            if spec.needs_principal:
+                kwargs["principal"] = principal
+            result = spec.handler(**kwargs)
+            self.tracer.record(TraceEvent(name, principal.id, site_id, "success",
+                                          duration_ms=(perf_counter()-t0)*1000))
             return result
         except Exception as exc:
-            self.tracer.record(TraceEvent(name, principal.id, site_id, "denied_or_failed", detail=type(exc).__name__))
+            self.tracer.record(TraceEvent(name, principal.id, site_id, "denied_or_failed",
+                                          detail=type(exc).__name__,
+                                          duration_ms=(perf_counter()-t0)*1000))
             raise

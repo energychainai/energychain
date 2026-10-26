@@ -147,3 +147,102 @@ class EnergyPlan:
     recommendations: tuple[str, ...]
     estimated: bool = True
     warnings: tuple[str, ...] = ()
+
+
+class RelationshipKind(str, Enum):
+    """Logical relationships only; does not imply controllability."""
+    FEEDS = "feeds"
+    MEASURES = "measures"
+    STORES_FROM = "stores_from"
+    BACKS_UP = "backs_up"
+
+
+@dataclass(frozen=True)
+class EnergyRelationship:
+    site_id: str
+    source_asset_id: str
+    destination_asset_id: str
+    kind: RelationshipKind
+
+    def __post_init__(self) -> None:
+        if not self.site_id or not self.source_asset_id or not self.destination_asset_id:
+            raise ValidationError("relationship identifiers are required")
+        if self.source_asset_id == self.destination_asset_id:
+            raise ValidationError("self-referential relationships are not allowed")
+        object.__setattr__(self, "kind", RelationshipKind(self.kind))
+
+
+@dataclass(frozen=True)
+class EnergyTopology:
+    """Site-local graph validated against the registered asset catalogue."""
+    site_id: str
+    relationships: tuple[EnergyRelationship, ...]
+
+    def validate(self, assets: list[EnergyAsset]) -> None:
+        known = {a.id for a in assets if a.site_id == self.site_id}
+        if len(known) != len([a for a in assets if a.site_id == self.site_id]):
+            raise ValidationError("duplicate topology asset identifiers")
+        for relation in self.relationships:
+            if relation.site_id != self.site_id or not {
+                relation.source_asset_id, relation.destination_asset_id
+            }.issubset(known):
+                raise ValidationError("topology relationship crosses sites or references missing asset")
+        if len(set(self.relationships)) != len(self.relationships):
+            raise ValidationError("duplicate topology relationship")
+
+
+@dataclass(frozen=True)
+class EnergyConstraint:
+    """Hard, numerical constraint for planning; independent of LLM output."""
+    key: str
+    lower: float | None = None
+    upper: float | None = None
+    unit: str = ""
+
+    def __post_init__(self) -> None:
+        if not self.key or (self.lower is None and self.upper is None):
+            raise ValidationError("constraint requires key and bound")
+        if any(not isfinite(x) for x in (self.lower, self.upper) if x is not None):
+            raise ValidationError("constraint bounds must be finite")
+        if self.lower is not None and self.upper is not None and self.lower > self.upper:
+            raise ValidationError("constraint lower bound exceeds upper bound")
+
+    def check(self, value: float) -> bool:
+        return (isinstance(value, (int, float)) and not isinstance(value, bool) and
+                isfinite(value) and (self.lower is None or value >= self.lower) and (
+            self.upper is None or value <= self.upper))
+
+
+@dataclass(frozen=True)
+class EnergyActionSpec:
+    """Declared *potential* capability; neither authorization nor execution."""
+    asset_id: str
+    command: str
+    parameter_bounds: tuple[EnergyConstraint, ...] = ()
+    human_approval_required: bool = True
+
+    def __post_init__(self) -> None:
+        if not self.asset_id or not self.command:
+            raise ValidationError("asset id and command are required")
+        if len({x.key for x in self.parameter_bounds}) != len(self.parameter_bounds):
+            raise ValidationError("duplicate action parameter constraint")
+
+    def validate(self, parameters: dict[str, float]) -> None:
+        expected = {x.key for x in self.parameter_bounds}
+        if set(parameters) != expected:
+            raise ValidationError("action parameters do not match declared bounded parameters")
+        if not all(x.check(parameters[x.key]) for x in self.parameter_bounds):
+            raise ValidationError("action parameters exceed declared bounds")
+
+
+def require_fresh(reading: EnergyReading, *, maximum_age_seconds: float,
+                  now: datetime | None = None) -> None:
+    """Reject future, stale or incorrectly clocked readings for operational decisions."""
+    from .exceptions import StaleReading
+    reference = now or utcnow()
+    ensure_aware(reference)
+    if not isfinite(maximum_age_seconds) or maximum_age_seconds <= 0:
+        raise ValidationError("maximum age must be finite and positive")
+    age = (reference - reading.timestamp).total_seconds()
+    if age < -30 or age > maximum_age_seconds:
+        raise StaleReading(f"{reading.asset_id}/{reading.metric.value} reading is outside freshness window")

@@ -9,6 +9,7 @@ import energychain
 from energychain import (
     Approval, AssetKind, CSVConnector, EnergyAsset, EnergyChain, EnergySite,
     Permission, Principal, SQLiteEnergyMemory, ToolRegistry, ToolSpec,
+    SignedApprovalAuthority,
 )
 from energychain.exceptions import ApprovalRequired, PermissionDenied
 
@@ -46,8 +47,17 @@ def smoke_test():
         pass
     else:
         raise AssertionError("execution did not require approval")
-    assert tools.invoke("act", operator, "site",
-                        approval=Approval("operator", "site", "act", True)) == "site"
+    try:
+        tools.invoke("act", operator, "site",
+                     approval=Approval("operator", "site", "act", True))
+    except ApprovalRequired:
+        pass
+    else:
+        raise AssertionError("unsigned approval unexpectedly authorized execution")
+    authority = SignedApprovalAuthority(b"2" * 32)
+    tools.policy.approval_authority = authority
+    signature = authority.issue(operator, "site", "act")
+    assert tools.invoke("act", operator, "site", approval=signature) == "site"
     with tempfile.TemporaryDirectory() as directory:
         csv = Path(directory) / "readings.csv"
         csv.write_text("asset_id,metric,value,timestamp,source\n"

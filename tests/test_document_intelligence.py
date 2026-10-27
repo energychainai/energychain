@@ -182,7 +182,8 @@ def test_retrieval_citation_and_untrusted_document_instructions(tmp_path):
 
 
 def test_embedding_extension_and_invalid_vectors(tmp_path):
-    embed = lambda strings: [[1.0, 0.0] if "solar" in s.lower() else [0.0, 1.0] for s in strings]
+    def embed(strings):
+        return [[1.0, 0.0] if "solar" in s.lower() else [0.0, 1.0] for s in strings]
     index = EnergyKnowledgeBase(tmp_path/"db.sqlite", tenant_id="org", embedder=embed)
     writer = user("site", write=True)
     index.ingest_bytes(b"Solar panel output 8 kW", filename="solar.txt",

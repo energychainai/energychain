@@ -26,7 +26,7 @@ from .checkpoints import SQLiteWorkflowCheckpoints
 from .integrations import HomeAssistantConnector, HAEntityMapping, OpenMeteoIrradiance
 
 from .evaluation import ForecastEvaluation, BacktestResult, evaluate_forecast, chronological_mean_backtest
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 __all__ = ["EnergyChain", "AssetKind", "Capability", "Metric", "EnergySite", "EnergyAsset",
            "EnergyReading", "EnergyEvent", "EnergyPlan", "Tariff", "Permission", "Principal",
            "SafetyPolicy", "Approval", "RuntimeEstimate", "estimate_battery_runtime",

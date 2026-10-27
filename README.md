@@ -2,24 +2,28 @@
 
 **EnergyChain is the developer infrastructure through which AI applications can understand, interact with, and safely optimize energy systems—from solar installations and batteries to mini-grids, utilities, and electricity networks.**
 
-> Status: **v0.1.0 alpha**. Offline-first, Python-first, and read-only by default. Simulated energy data are **not live device measurements**.
+> Status: **v0.2.0 alpha**. Offline-first, Python-first, and read-only by default. Simulated energy data are **not live device measurements**.
 
 EnergyChain brings composable, vendor-neutral energy data types, connectors, safe callable tools, storage, deterministic energy calculations, a pluggable agent interface, and in-process workflows to Python developers. EnergyChain is a **separate project** from Energy Data Network (EDN).
 
 ## Installation
 
-After this distribution has been published to PyPI:
+Install the latest release after publication to the official PyPI index:
 
 ```bash
-python -m pip install energychain==0.1.0
+python -m pip install --upgrade energychain
 ```
 
-Until publishing is confirmed:
+To pin the expanded SDK after v0.2.0 has been published:
 
 ```bash
-python -m pip install .
-# or install a downloaded wheel:
-python -m pip install dist/energychain-0.1.0-py3-none-any.whl
+python -m pip install energychain==0.2.0
+```
+
+Until publication, install this branch locally in a development environment:
+
+```bash
+python -m pip install -e .
 ```
 
 Requires Python 3.10 or newer. The core package uses **only Python standard-library runtime dependencies**.
@@ -55,7 +59,7 @@ The framework provides site-scoped **fleets**, structured **episodic memory**, a
 - [Read a Home Assistant energy sensor](examples/home_assistant_readonly.py)
 - [Fleet and episodic memory demo](examples/energy_fleet_and_memory.py)
 
-## Components available in 0.1
+## Expanded components in 0.2
 
 | Component | Implementation |
 |---|---|
@@ -70,7 +74,7 @@ The framework provides site-scoped **fleets**, structured **episodic memory**, a
 | Observability | Bounded trace and latency; model-independent forecast metrics and chronological baseline backtest |
 | Developer experience | PyPI-ready packaging, examples, tests, CI and trusted-publisher release workflow |
 
-## Intentionally not included in 0.1
+## Intentionally not included in 0.2
 
 - Field-tested and authenticated integrations with specific solar/battery vendors (no verified live credentials, calibration or deployment yet)
 - A production-ready control or dispatch runtime, remote device command implementation, or energy safety certification
@@ -108,7 +112,7 @@ See [architecture](docs/architecture.md) for contract boundaries and limitations
 
 ## Licensing and safety
 
-No open-source licence is granted by this draft package. The copyright holder must select distribution/licensing terms before a public release. Publishing a package to PyPI makes its distribution artifacts publicly downloadable, even if the code repository is private. Alpha-quality software: not warranted for physically controlling energy equipment.
+EnergyChain is MIT licensed; see [LICENSE](LICENSE). PyPI wheels and source archives are publicly downloadable even though the development repository remains private. This alpha-quality SDK is not certified for physical energy-equipment control.
 
 
 ## Operational deployment boundary

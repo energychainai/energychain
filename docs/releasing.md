@@ -2,28 +2,29 @@
 
 **Do not claim `pip install energychain` works until the release exists on https://pypi.org/project/energychain/** and the installed package has been smoke-tested using a clean environment.
 
-## Owner decisions before the first public release
+## Existing license and prior release
 
-The repository is the existing **private** https://github.com/Atanseiye/energychain.
-Continue its history; do not recreate it or change its visibility.
+The repository remains private at https://github.com/Atanseiye/energychain.
+EnergyChain v0.1.0 was published on October 26, 2026. Do not overwrite the tag
+or attempt to upload the same version or filenames to PyPI.
 
-No distribution license has been selected. The owner must confirm the right to
-distribute all bundled source and select the licensing terms. Add the approved
-`LICENSE`, corresponding `[project]` license metadata and license-file inclusion in
-`pyproject.toml`, then update the README's draft licensing notice. Do not infer an
-open-source license from the fact that this is an SDK. If using PEP 639 license
-metadata, require `setuptools>=77` in `[build-system]`.
+The owner chose the MIT License, and `main` contains the approved `LICENSE`,
+`[project].license = "MIT"`, `license-files = ["LICENSE"]`, and the
+`setuptools>=77` build requirement. Keep all of these in the v0.2.0 release.
+The distribution wheel **and source archive** are publicly downloadable even
+though the development GitHub repository remains private.
 
-Confirm public distribution of the wheel **and source archive**. The publishing
-workflow fails before upload if the built artifacts lack license metadata/files.
-This is an artifact check, not proof of copyright ownership or legal clearance.
+## Version policy
 
-## Account setup
+The deep SDK expansion is version `0.2.0`, not a replacement for `0.1.0`.
+Keep the `pyproject.toml` version, `energychain.__version__`, the release
+tag `v0.2.0`, and wheel/source metadata identical.
+Any subsequent functionality must land in a separately reviewed release.
 
-1. Check `https://pypi.org/pypi/energychain/json` immediately before publishing.
-   A 404 means no published project is visible; it does not guarantee the name is
-   reservable. If another party owns it, stop rather than uploading a substitute.
-2. Sign in at https://pypi.org/manage/account/publishing/ and add a pending GitHub
+## Account setup (existing publisher; verify before release)
+
+1. Confirm the currently published version at `https://pypi.org/pypi/energychain/json` and ensure `0.2.0` does not already exist. Never overwrite a published version.
+2. Sign in at https://pypi.org/manage/account/publishing/ and confirm the existing GitHub
    Trusted Publisher with these exact values:
 
    | Field | Value |
@@ -34,8 +35,7 @@ This is an artifact check, not proof of copyright ownership or legal clearance.
    | Workflow filename | `publish.yml` |
    | Environment | `pypi` |
 
-   A pending publisher does not reserve the name. For an existing project owned by
-   this account, configure the publisher in that project's Publishing settings.
+   Check the existing `energychain` project's Publishing settings; do not register or claim a new project.
 3. In repository **Settings → Environments**, create `pypi`. Keep the repository
    private. Set deployment rules/reviewers supported by the account as appropriate.
    The workflow grants `id-token: write` only to the isolated publishing job;
@@ -52,7 +52,7 @@ python -m ruff check --isolated --select E4,E7,E9,F src tests scripts examples
 python -m pytest -q
 python -m build
 python -m twine check --strict dist/*
-python scripts/check_dist.py --tag v0.1.0 --require-license
+python scripts/check_dist.py --tag v0.2.0 --require-license
 ```
 
 Start with an empty `dist/` directory. `python -m build` builds the wheel from the
@@ -70,7 +70,7 @@ checkout or `PYTHONPATH` from masking an incomplete wheel. CI does this on Pytho
 
 1. Ensure the exact release commit is on `main`, its CI is green, licensing is
    settled and PyPI/account setup is complete.
-2. Create and publish a non-prerelease GitHub Release tagged `v0.1.0` at that commit.
+2. Create and publish a non-prerelease GitHub Release tagged `v0.2.0` at that commit.
    `.github/workflows/publish.yml` repeats CI, verifies main ancestry and tag/version
    agreement, validates licensing and tests the exact wheel before uploading.
 3. The separate `publish` job obtains short-lived PyPI credentials through GitHub

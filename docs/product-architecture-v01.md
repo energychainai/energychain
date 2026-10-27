@@ -1,4 +1,4 @@
-# EnergyChain v0.1 — Deep Technical Architecture and Release Boundary
+# EnergyChain v0.2 — Expanded Technical Architecture and Release Boundary
 
 ## Core positioning
 
@@ -33,7 +33,7 @@ Developer-built energy app
 
 ## Master inventory of 15 system modules
 
-| Module | v0.1 delivered capabilities | Not delivered in this SDK |
+| Module | v0.2 expanded SDK capabilities | Not delivered in this SDK |
 |---|---|---|
 | 1. Energy Core | Typed sites/assets/readings/units, topology relations, numerical constraints, source quality | Certified equipment ontology or protocol conformance |
 | 2. Connectors | Registry, CSV, deterministic simulator, read-only HA mapping, opt-in weather | Verified specific solar/battery vendors / proprietary hardware protocols |
@@ -72,7 +72,7 @@ The model may recommend or request a plan, but a different trust domain must eva
 Durable SQLite checkpoints reduce accidental reruns of READ/ANALYZE operations and reject changing an existing run ID's scope/plan. This is not a durable executor for device commands; scheduler, credential rotation, operational retries and transactional outbox are future infrastructure. In-process workflow is also retained for small deterministic tool pipelines.
 
 ### Developer experience and release
-Normal app installation does not require any paid API provider. `EnergyChain.demo()` is explicitly synthetic. PyPI distribution requires separate publisher authorization and legal licensing decision, regardless of private GitHub visibility. Any externally accessible hosted service built on this library needs independent security/deployment review.
+Normal app installation does not require any paid API provider. `EnergyChain.demo()` is explicitly synthetic. The MIT-licensed SDK requires the preconfigured Trusted Publisher, release approvals, and a verified versioned PyPI publication; the private repository does not make artifacts private. Any externally accessible hosted service built on this library needs independent security/deployment review.
 
 ## Minimum field-readiness acceptance gates (not yet passed)
 
@@ -89,4 +89,4 @@ Normal app installation does not require any paid API provider. `EnergyChain.dem
 
 ## Roadmap decision
 
-The first release should be useful *without* connected hardware but not misrepresented as field-approved energy operations. Focus near-term validation on a real user's read-only data source + reliable context/memory + a reproducible developer reference use case; introduce controlled execution only after its independent trust boundary exists.
+The expanded SDK should be useful *without* connected hardware but not misrepresented as field-approved energy operations. Focus near-term validation on a real user's read-only data source + reliable context/memory + a reproducible developer reference use case; introduce controlled execution only after its independent trust boundary exists.

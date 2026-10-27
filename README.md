@@ -2,7 +2,7 @@
 
 **EnergyChain is the developer infrastructure through which AI applications can understand, interact with, and safely optimize energy systems—from solar installations and batteries to mini-grids, utilities, and electricity networks.**
 
-> Status: **v0.2.0 alpha**. Offline-first, Python-first, and read-only by default. Simulated energy data are **not live device measurements**.
+> Status: **v0.3.0 alpha**. Offline-first, Python-first, and read-only by default. Simulated energy data are **not live device measurements**.
 
 EnergyChain brings composable, vendor-neutral energy data types, connectors, safe callable tools, storage, deterministic energy calculations, a pluggable agent interface, and in-process workflows to Python developers. EnergyChain is a **separate project** from Energy Data Network (EDN).
 
@@ -14,7 +14,7 @@ Install the latest release after publication to the official PyPI index:
 python -m pip install --upgrade energychain
 ```
 
-To pin the expanded SDK after v0.2.0 has been published:
+To pin the expanded SDK after v0.3.0 has been published:
 
 ```bash
 python -m pip install energychain==0.2.0
@@ -27,6 +27,30 @@ python -m pip install -e .
 ```
 
 Requires Python 3.10 or newer. The core package uses **only Python standard-library runtime dependencies**.
+
+## Model Gateway and Document Intelligence (v0.3)
+
+EnergyChain now offers explicit provider adapters for OpenAI, Anthropic, Gemini,
+Hugging Face Inference Providers, local Ollama, and HTTPS OpenAI-compatible endpoints.
+The developer supplies credentials and selects an available model; no inference
+is hosted. JSON Schema results are validated locally with the models extra.
+
+A tenant-bound Document Intelligence index accepts PDF, DOCX, TXT, Markdown, CSV
+and XLSX files, retaining source fingerprints, page/sheet/section provenance,
+and explicit energy quantities. The SQLite search index enforces site permissions
+and supports optional developer-supplied embeddings.
+
+~~~bash
+python -m pip install 'energychain[models]==0.3.0'
+python -m pip install 'energychain[documents]==0.3.0'
+python -m pip install 'energychain[all]==0.3.0'
+~~~
+
+See [Model Gateway](docs/model-gateway.md) and
+[Document Intelligence](docs/document-intelligence.md) for APIs, examples and
+production security obligations. Offline mock tests do not certify every live
+vendor model. Parse untrusted files in an isolated, resource-constrained worker;
+document instructions never grant energy device control permissions.
 
 ## Quickstart
 

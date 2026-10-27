@@ -34,3 +34,12 @@ Production services should log request IDs, actor and organizational identity, a
 ## Policy for release claims
 
 Only claim a production-grade, field-validated integration after end-to-end live testing under an authorized operator, threat modeling, platform and API compliance review, telemetry provenance validation, device/failure-mode safety assessment, availability/latency SLO measurement and incident rehearsal.
+
+## v0.3 model and document boundaries
+
+Model adapters take server-side credentials and emit metadata-only traces.
+Model outputs are untrusted and never bypass site/execute permissions.
+Document storage is tenant-bound and permission-checked, but the application
+must authenticate users, encrypt storage/backups and isolate untrusted document
+parsers in resource-constrained workers. Retrieved evidence and citations do not
+certify equipment parameters or generated claims.

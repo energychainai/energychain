@@ -16,14 +16,14 @@ though the development GitHub repository remains private.
 
 ## Version policy
 
-The deep SDK expansion is version `0.2.0`, not a replacement for `0.1.0`.
+The deep SDK expansion was released as v0.2.0; this is the next v0.3.0 release, preserving all previous artifacts.
 Keep the `pyproject.toml` version, `energychain.__version__`, the release
-tag `v0.2.0`, and wheel/source metadata identical.
+tag `v0.3.0`, and wheel/source metadata identical.
 Any subsequent functionality must land in a separately reviewed release.
 
 ## Account setup (existing publisher; verify before release)
 
-1. Confirm the currently published version at `https://pypi.org/pypi/energychain/json` and ensure `0.2.0` does not already exist. Never overwrite a published version.
+1. Confirm the currently published version at `https://pypi.org/pypi/energychain/json` and ensure `0.3.0` does not already exist. Never overwrite a published version.
 2. Sign in at https://pypi.org/manage/account/publishing/ and confirm the existing GitHub
    Trusted Publisher with these exact values:
 
@@ -52,7 +52,7 @@ python -m ruff check --isolated --select E4,E7,E9,F src tests scripts examples
 python -m pytest -q
 python -m build
 python -m twine check --strict dist/*
-python scripts/check_dist.py --tag v0.2.0 --require-license
+python scripts/check_dist.py --tag v0.3.0 --require-license
 ```
 
 Start with an empty `dist/` directory. `python -m build` builds the wheel from the
@@ -70,7 +70,7 @@ checkout or `PYTHONPATH` from masking an incomplete wheel. CI does this on Pytho
 
 1. Ensure the exact release commit is on `main`, its CI is green, licensing is
    settled and PyPI/account setup is complete.
-2. Create and publish a non-prerelease GitHub Release tagged `v0.2.0` at that commit.
+2. Create and publish a non-prerelease GitHub Release tagged `v0.3.0` at that commit.
    `.github/workflows/publish.yml` repeats CI, verifies main ancestry and tag/version
    agreement, validates licensing and tests the exact wheel before uploading.
 3. The separate `publish` job obtains short-lived PyPI credentials through GitHub
@@ -88,3 +88,10 @@ retrying. PyPI release filenames cannot be overwritten. After a successful uploa
 rerun only the failed verification job rather than uploading the same files again.
 
 A **private GitHub repository does not make a PyPI distribution private**. Published wheels/sdists and their source can generally be downloaded by anyone. Decide whether the package source is suitable for public distribution before publishing.
+
+## v0.3-specific verification
+
+Run all provider contract mocks, protected document format parsers and tenant/site
+isolation tests. The core distribution must remain dependency-free; optional
+models and documents extras must be metadata-scoped. Only a non-prerelease GitHub
+Release from tested main may trigger the existing PyPI Trusted Publisher.

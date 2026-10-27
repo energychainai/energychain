@@ -14,7 +14,29 @@ from energychain import (
 from energychain.exceptions import ApprovalRequired, PermissionDenied
 
 
+def smoke_v03_features():
+    from energychain import EnergyKnowledgeBase, ModelGateway
+    from energychain.documents import parse_document
+    parsed = parse_document(b"Battery nominal 12 kWh", "battery.txt")
+    assert parsed.sections and parsed.sha256
+    with tempfile.TemporaryDirectory() as folder:
+        index = EnergyKnowledgeBase(Path(folder)/"docs.sqlite", tenant_id="test")
+        writer = Principal("operator", frozenset({"site"}),
+                           frozenset({Permission.READ, Permission.PREPARE}))
+        index.ingest_bytes(b"Solar battery 8 kWh", filename="doc.txt",
+                           principal=writer, site_id="site")
+        assert index.search("battery", principal=writer, site_id="site")
+    class Stub:
+        def post(self, url, payload, headers, timeout):
+            return {"choices": [{"message": {"content": "Advisory"}}],
+                    "usage": {"prompt_tokens": 3, "completion_tokens": 2}}
+    result = ModelGateway("openai", "test-model", api_key="fake",
+                          transport=Stub()).complete(system="safe", user="hello")
+    assert result.usage.total_tokens == 5
+
+
 def smoke_test():
+    smoke_v03_features()
     installed = distribution("energychain")
     assert installed.metadata["Name"] == "energychain"
     assert installed.version == energychain.__version__

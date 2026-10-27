@@ -26,7 +26,15 @@ from .checkpoints import SQLiteWorkflowCheckpoints
 from .integrations import HomeAssistantConnector, HAEntityMapping, OpenMeteoIrradiance
 
 from .evaluation import ForecastEvaluation, BacktestResult, evaluate_forecast, chronological_mean_backtest
-__version__ = "0.2.0"
+from .model_gateway import (
+    ModelGateway, ModelResult, ModelTrace, TokenUsage, ModelError,
+    ModelConfigError, ModelResponseError, ModelHTTPError, JsonTransport,
+)
+from .documents import (
+    EnergyKnowledgeBase, DocumentLimits, DocumentError, DocumentLimitError,
+    RetrievedPassage, KnowledgeAnswer, parse_document, chunk_document, energy_facts,
+)
+__version__ = "0.3.0"
 __all__ = ["EnergyChain", "AssetKind", "Capability", "Metric", "EnergySite", "EnergyAsset",
            "EnergyReading", "EnergyEvent", "EnergyPlan", "Tariff", "Permission", "Principal",
            "SafetyPolicy", "Approval", "RuntimeEstimate", "estimate_battery_runtime",
@@ -47,3 +55,9 @@ __all__ += ["Fleet", "FleetManager", "FleetSnapshot", "FleetFailure", "EnergyCon
             "SQLiteWorkflowCheckpoints", "HomeAssistantConnector", "HAEntityMapping",
             "OpenMeteoIrradiance"]
 __all__ += ["ForecastEvaluation", "BacktestResult", "evaluate_forecast", "chronological_mean_backtest"]
+
+__all__ += ["ModelGateway", "ModelResult", "ModelTrace", "TokenUsage", "ModelError",
+            "ModelConfigError", "ModelResponseError", "ModelHTTPError", "JsonTransport",
+            "EnergyKnowledgeBase", "DocumentLimits", "DocumentError", "DocumentLimitError",
+            "RetrievedPassage", "KnowledgeAnswer", "parse_document", "chunk_document",
+            "energy_facts"]

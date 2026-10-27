@@ -8,7 +8,9 @@ permissions:
   actions: write
 jobs:
   stage:
-    if: github.repository == 'Atanseiye/energychain' && github.event.head_commit.message == 'release: stage and dispatch v0.2.0'
+    if: >-
+      github.repository == 'Atanseiye/energychain' &&
+      github.event.head_commit.message == 'release: stage and dispatch v0.2.0'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:

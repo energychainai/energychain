@@ -1,0 +1,47 @@
+name: Stage EnergyChain v0.3.0 for PyPI
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/stage-v0.3.0.yml']
+permissions:
+  contents: write
+  actions: write
+jobs:
+  stage:
+    if: >-
+      github.repository == 'Atanseiye/energychain' &&
+      github.event.head_commit.message == 'release: stage and dispatch v0.3.0'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Validate licensed package and unique version
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f LICENSE
+          grep -q '^version = "0.3.0"$' pyproject.toml
+          grep -q '^__version__ = "0.3.0"$' src/energychain/__init__.py
+          ! git show-ref --verify --quiet refs/tags/v0.3.0
+          ! gh release view v0.3.0 --json tagName >/dev/null 2>&1
+      - name: Create exact main-commit v0.3.0 tag and draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api --method POST "repos/$GITHUB_REPOSITORY/git/refs" \
+            -f ref=refs/tags/v0.3.0 \
+            -f sha="$GITHUB_SHA"
+          gh release create v0.3.0 --draft --verify-tag \
+            --title "EnergyChain v0.3.0" \
+            --notes-file docs/release-notes-v0.3.0.md
+      - name: Dispatch PyPI Trusted Publishing at v0.3.0
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh workflow run publish.yml --ref v0.3.0
+          echo "Release job dispatched using the v0.3.0 tag."

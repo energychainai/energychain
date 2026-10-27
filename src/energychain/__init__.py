@@ -11,7 +11,22 @@ from .memory import EnergyMemory, InMemoryEnergyMemory, SQLiteEnergyMemory, Memo
 from .tools import ToolRegistry, ToolSpec
 from .workflows import EnergyWorkflow, WorkflowStep, WorkflowResult
 
-__version__ = "0.1.0"
+from .fleets import Fleet, FleetManager, FleetSnapshot, FleetFailure
+from .models import (EnergyConstraint, EnergyActionSpec, EnergyRelationship,
+                     EnergyTopology, RelationshipKind, require_fresh)
+from .actions import ActionService, PreparedAction, ActionOutcome
+from .approval import SignedApprovalAuthority
+from .planning import (EnergyBalance, PlanningSlot, FlexibleLoad, AdvisoryLoadPlan,
+                       energy_balance, estimate_pv_power, optimize_load_schedule)
+from .memory import EnergyEpisode, InMemoryEpisodeStore, SQLiteEpisodeStore, EnergyContextBuilder
+from .agents import BoundedEnergyAgent, BoundedAgentResult, ToolChoice
+from .skills import EnergySkill, EnergySkillRegistry
+from .telemetry import TelemetryIngestor, EnergyEventBus, IngestionReceipt
+from .checkpoints import SQLiteWorkflowCheckpoints
+from .integrations import HomeAssistantConnector, HAEntityMapping, OpenMeteoIrradiance
+
+from .evaluation import ForecastEvaluation, BacktestResult, evaluate_forecast, chronological_mean_backtest
+__version__ = "0.2.0"
 __all__ = ["EnergyChain", "AssetKind", "Capability", "Metric", "EnergySite", "EnergyAsset",
            "EnergyReading", "EnergyEvent", "EnergyPlan", "Tariff", "Permission", "Principal",
            "SafetyPolicy", "Approval", "RuntimeEstimate", "estimate_battery_runtime",
@@ -20,3 +35,15 @@ __all__ = ["EnergyChain", "AssetKind", "Capability", "Metric", "EnergySite", "En
            "ConnectorRegistry", "HybridSiteSimulator", "CSVConnector", "EnergyMemory", "InMemoryEnergyMemory",
            "SQLiteEnergyMemory", "MemoryNote", "ToolRegistry", "ToolSpec", "EnergyWorkflow",
            "WorkflowStep", "WorkflowResult"]
+
+__all__ += ["Fleet", "FleetManager", "FleetSnapshot", "FleetFailure", "EnergyConstraint",
+            "EnergyActionSpec", "EnergyRelationship", "EnergyTopology", "RelationshipKind",
+            "require_fresh", "ActionService", "PreparedAction", "ActionOutcome",
+            "SignedApprovalAuthority", "EnergyBalance", "PlanningSlot", "FlexibleLoad",
+            "AdvisoryLoadPlan", "energy_balance", "estimate_pv_power", "optimize_load_schedule",
+            "EnergyEpisode", "InMemoryEpisodeStore", "SQLiteEpisodeStore", "EnergyContextBuilder",
+            "BoundedEnergyAgent", "BoundedAgentResult", "ToolChoice", "EnergySkill",
+            "EnergySkillRegistry", "TelemetryIngestor", "EnergyEventBus", "IngestionReceipt",
+            "SQLiteWorkflowCheckpoints", "HomeAssistantConnector", "HAEntityMapping",
+            "OpenMeteoIrradiance"]
+__all__ += ["ForecastEvaluation", "BacktestResult", "evaluate_forecast", "chronological_mean_backtest"]

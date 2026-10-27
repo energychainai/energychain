@@ -2,6 +2,7 @@
 from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime
+from threading import RLock
 from energychain.models import utcnow
 
 
@@ -13,6 +14,8 @@ class TraceEvent:
     outcome: str
     timestamp: datetime = field(default_factory=utcnow)
     detail: str = ""
+    duration_ms: float | None = None
+    correlation_id: str | None = None
 
 
 class InMemoryTracer:
@@ -21,10 +24,13 @@ class InMemoryTracer:
             raise ValueError("max_events must be positive")
         self.max_events = max_events
         self._events: list[TraceEvent] = []
+        self._lock = RLock()
 
     def record(self, event: TraceEvent) -> None:
-        self._events.append(event)
-        self._events = self._events[-self.max_events:]
+        with self._lock:
+            self._events.append(event)
+            self._events = self._events[-self.max_events:]
 
     def events(self, site_id: str | None = None) -> list[TraceEvent]:
-        return [e for e in self._events if site_id is None or e.site_id == site_id]
+        with self._lock:
+            return [e for e in self._events if site_id is None or e.site_id == site_id]

@@ -1,7 +1,8 @@
 from datetime import datetime, timedelta, timezone
 import pytest
 from energychain import (EnergyChain, Principal, Permission, Approval,
-                         ToolSpec, ToolRegistry, CallableTextModel, HybridSiteSimulator)
+                         ToolSpec, ToolRegistry, CallableTextModel, HybridSiteSimulator,
+                         SignedApprovalAuthority)
 from energychain.exceptions import PermissionDenied, ApprovalRequired, ValidationError
 
 
@@ -37,7 +38,14 @@ def test_execution_needs_specific_approval_and_permission():
     with pytest.raises(ApprovalRequired):
         tools.invoke("turn_on", principal, "demo-site", approval=Approval("owner", "wrong", "turn_on", True))
     approved = Approval("owner", "demo-site", "turn_on", True)
-    assert tools.invoke("turn_on", principal, "demo-site", approval=approved) == "ok"
+    with pytest.raises(ApprovalRequired):
+        tools.invoke("turn_on", principal, "demo-site", approval=approved)
+    authority = SignedApprovalAuthority(b"1" * 32)
+    tools.policy.approval_authority = authority
+    token = authority.issue(principal, "demo-site", "turn_on")
+    assert tools.invoke("turn_on", principal, "demo-site", approval=token) == "ok"
+    with pytest.raises(ApprovalRequired):
+        tools.invoke("turn_on", principal, "demo-site", approval=token)
 
 
 def test_llm_is_pluggable_but_cannot_choose_tool():

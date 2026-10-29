@@ -9,7 +9,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   test:
-    if: github.repository == 'Atanseiye/energychain' && !github.event.release.prerelease
+    if: github.repository == 'energychainai/energychain' && !github.event.release.prerelease
     uses: ./.github/workflows/ci.yml
   build:
     needs: test

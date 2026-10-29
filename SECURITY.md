@@ -13,7 +13,7 @@ EnergyChain is an alpha-stage developer SDK, not a certified energy-equipment co
 
 **Do not create a public issue or pull request containing exploit details, credentials or sensitive customer data.**
 
-Use [GitHub's private vulnerability reporting](https://github.com/Atanseiye/energychain/security/advisories/new) when enabled. If that path is unavailable, contact the maintainer through a non-public contact method listed on their GitHub profile; do not post the exploit publicly merely to request a contact channel.
+Use [GitHub's private vulnerability reporting](https://github.com/energychainai/energychain/security/advisories/new) when enabled. If that path is unavailable, contact the maintainer through a non-public contact method listed on their GitHub profile; do not post the exploit publicly merely to request a contact channel.
 
 Include the affected version, a minimized reproduction using synthetic data, plausible impact, and suggested mitigation if known. Do not test against equipment or systems without authorization.
 

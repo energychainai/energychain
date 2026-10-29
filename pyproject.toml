@@ -24,8 +24,8 @@ dev = ["pytest>=8", "build>=1", "twine>=5", "ruff>=0.6", "jsonschema>=4.23,<5",
 [project.urls]
 Homepage = "https://energychain-plum.vercel.app/"
 Documentation = "https://energychain-plum.vercel.app/docs/"
-Source = "https://github.com/Atanseiye/energychain"
-Issues = "https://github.com/Atanseiye/energychain/issues"
+Source = "https://github.com/energychainai/energychain"
+Issues = "https://github.com/energychainai/energychain/issues"
 
 [tool.setuptools.packages.find]
 where = ["src"]

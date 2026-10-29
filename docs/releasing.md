@@ -11,8 +11,8 @@ or attempt to upload the same version or filenames to PyPI.
 The owner chose the MIT License, and `main` contains the approved `LICENSE`,
 `[project].license = "MIT"`, `license-files = ["LICENSE"]`, and the
 `setuptools>=77` build requirement. Keep all of these in subsequent releases.
-The distribution wheel **and source archive** are publicly downloadable even
-though the development GitHub repository remains private.
+The distribution wheel **and source archive** are publicly downloadable
+regardless of whether the development GitHub repository is public or private.
 
 ## Version policy
 
@@ -35,13 +35,13 @@ Any subsequent functionality must land in a separately reviewed release.
    | Environment | `pypi` |
 
    Check the existing `energychain` project's Publishing settings; do not register or claim a new project.
-3. In repository **Settings → Environments**, create `pypi`. Keep the repository
-   subject to the completed public-source review. Set deployment rules/reviewers supported by the account as appropriate.
+3. In repository **Settings → Environments**, verify the existing `pypi` environment.
+   Configure deployment rules/reviewers supported by the account as appropriate.
    The workflow grants `id-token: write` only to the isolated publishing job;
    no PyPI password or long-lived token belongs in the repository or its secrets.
 
-These account steps require authenticated owner access. A committed workflow does
-not configure the pending publisher in PyPI or verify the environment's settings.
+These account checks require authenticated owner access. A committed workflow does
+not independently prove the Trusted Publisher or environment configuration.
 
 ## Validate the release commit
 
@@ -57,8 +57,7 @@ python scripts/check_dist.py --tag vX.Y.Z --require-license
 Start with an empty `dist/` directory. `python -m build` builds the wheel from the
 source archive, and `check_dist.py` checks that both contain the same SDK and
 matching name/version metadata. The license check is mandatory for publishing.
-Omit only `--require-license` when checking technical readiness before the owner
-has selected terms; that does not authorize a public release.
+Do not omit `--require-license` in an official release: this project already uses MIT.
 
 Install the built wheel into a new virtualenv with `--no-index --no-deps`, then run
 `python -I scripts/smoke_test.py` using that environment's Python. `-I` prevents the

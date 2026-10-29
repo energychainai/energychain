@@ -1,0 +1,43 @@
+name: Bug report
+description: Report a reproducible, non-sensitive problem with the SDK.
+title: '[Bug] '
+labels: ['bug']
+body:
+  - type: markdown
+    attributes:
+      value: 'Please use synthetic data. Do not include API keys, customer details, or real energy-system endpoints. For a vulnerability use the private security reporting link.'
+  - type: input
+    id: version
+    attributes:
+      label: EnergyChain version
+      placeholder: '0.3.0'
+    validations:
+      required: true
+  - type: input
+    id: python
+    attributes:
+      label: Python version and OS
+      placeholder: 'Python 3.12 / Ubuntu'
+    validations:
+      required: true
+  - type: textarea
+    id: behavior
+    attributes:
+      label: Expected and actual behavior
+      description: Include what you expected and what occurred.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Minimal reproduction with synthetic data
+      render: python
+    validations:
+      required: true
+  - type: checkboxes
+    id: disclosure
+    attributes:
+      label: Privacy and safety
+      options:
+        - label: I removed credentials, customer records, internal endpoints, and identifying meter/site data.
+          required: true

@@ -27,6 +27,14 @@ This checklist is a publication gate, not evidence that every item has already b
 - [ ] Check that docs distinguish simulated data, read-only integrations and planned managed infrastructure from field-tested capabilities.
 - [ ] Run CI against the final release-readiness commit and inspect results.
 
+## Organization migration
+
+- [ ] Transfer the existing GitHub repository (rather than creating a replacement) to `energychainai` while it is still private.
+- [ ] Install/authorize the connected GitHub integration for `energychainai` and grant access to `energychain`.
+- [ ] Verify original maintainer access, Actions/CI and release-environment permissions under the new organization.
+- [ ] Update the existing PyPI Trusted Publisher to `energychainai/energychain` with workflow `publish.yml` and environment `pypi`, before publishing any new version.
+- [ ] Update local Git remotes, external links, and repository metadata without creating a new repository at the old redirect location.
+
 ## Publication and community
 
 - [ ] Change GitHub repository visibility to Public through repository settings after the above items are accepted.

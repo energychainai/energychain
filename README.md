@@ -126,7 +126,7 @@ Provide `asset_id,metric,value,timestamp,source` columns and register an explici
 
 EnergyChain is an MIT-licensed open-source project. Read [CONTRIBUTING.md](CONTRIBUTING.md) for setup, code review and contribution guidelines; [AUTHORS.md](AUTHORS.md) for attribution; [GOVERNANCE.md](GOVERNANCE.md) for project decision-making; and [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) for community expectations.
 
-Use [GitHub issues](https://github.com/Atanseiye/energychain/issues) for **non-sensitive** bug reports and feature requests. See [SUPPORT.md](SUPPORT.md) for help and [SECURITY.md](SECURITY.md) for private vulnerability reporting. Never include real utility/customer data, meter credentials, or operational endpoints in public reports.
+Use [GitHub issues](https://github.com/energychainai/energychain/issues) for **non-sensitive** bug reports and feature requests. See [SUPPORT.md](SUPPORT.md) for help and [SECURITY.md](SECURITY.md) for private vulnerability reporting. Never include real utility/customer data, meter credentials, or operational endpoints in public reports.
 
 **Before switching a private repository to public**, the maintainer must complete the [open-source launch checklist](docs/open-source-launch-checklist.md), including a full history and credential review. Publishing on PyPI already exposes release source archives; repository visibility is independent.
 

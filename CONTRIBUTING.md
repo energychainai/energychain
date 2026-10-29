@@ -14,7 +14,7 @@ Thanks for helping make safe, composable energy software easier to build. Energy
 Use Python 3.10 or newer and a virtual environment:
 
 ```bash
-git clone https://github.com/Atanseiye/energychain.git
+git clone https://github.com/energychainai/energychain.git
 cd energychain
 python -m venv .venv
 python -m pip install -e '.[dev]'

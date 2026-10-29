@@ -4,7 +4,7 @@ For each new release, confirm official PyPI availability and smoke-test the dist
 
 ## Existing license and prior release
 
-The source repository is https://github.com/Atanseiye/energychain. Before any change from private to public, complete [the open-source launch checklist](open-source-launch-checklist.md).
+The source repository is https://github.com/energychainai/energychain. Before any change from private to public, complete [the open-source launch checklist](open-source-launch-checklist.md).
 EnergyChain v0.1.0 was published on October 26, 2026. Do not overwrite the tag
 or attempt to upload the same version or filenames to PyPI.
 
@@ -22,6 +22,8 @@ Any subsequent functionality must land in a separately reviewed release.
 
 ## Account setup (existing publisher; verify before release)
 
+After transferring this repository from `Atanseiye` to the `energychainai` organization, update the existing PyPI project's Trusted Publisher settings to match the new owner and repository before tagging another release. This account-level change is not accomplished by editing `publish.yml`. Do not trigger a new release while the old publisher trust is still configured.
+
 1. Confirm the currently published version at `https://pypi.org/pypi/energychain/json` and ensure the planned new version does not already exist. Never overwrite a published version.
 2. Sign in at https://pypi.org/manage/account/publishing/ and confirm the existing GitHub
    Trusted Publisher with these exact values:
@@ -29,7 +31,7 @@ Any subsequent functionality must land in a separately reviewed release.
    | Field | Value |
    | --- | --- |
    | PyPI project | `energychain` |
-   | GitHub owner | `Atanseiye` |
+   | GitHub owner | `energychainai` |
    | Repository | `energychain` |
    | Workflow filename | `publish.yml` |
    | Environment | `pypi` |

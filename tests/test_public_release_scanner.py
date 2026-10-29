@@ -28,4 +28,4 @@ def test_sensitive_file_names():
     assert unsafe_path("dev/private.pem")
     assert unsafe_path("data/site.sqlite")
     assert not unsafe_path("examples/quickstart.py")
-    assert not unsafe_path(".env.example.sample.txt")
+    assert unsafe_path(".env.example.sample.txt")

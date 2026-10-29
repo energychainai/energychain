@@ -8,19 +8,19 @@ EnergyChain brings composable, vendor-neutral energy data types, connectors, saf
 
 ## Installation
 
-Install the latest release after publication to the official PyPI index:
+Install the current release from the official PyPI index:
 
 ```bash
 python -m pip install --upgrade energychain
 ```
 
-To pin the expanded SDK after v0.3.0 has been published:
+To pin the current 0.3.0 alpha SDK:
 
 ```bash
-python -m pip install energychain==0.2.0
+python -m pip install energychain==0.3.0
 ```
 
-Until publication, install this branch locally in a development environment:
+For development, install the repository checkout locally:
 
 ```bash
 python -m pip install -e .
@@ -122,6 +122,14 @@ Provide `asset_id,metric,value,timestamp,source` columns and register an explici
 5. **Provenance matters:** Simulated, estimated and measured values are explicitly labelled.
 6. **Tests and evidence:** Do not confuse synthetic demonstrations with field validation.
 
+## Open source and contributing
+
+EnergyChain is an MIT-licensed open-source project. Read [CONTRIBUTING.md](CONTRIBUTING.md) for setup, code review and contribution guidelines; [AUTHORS.md](AUTHORS.md) for attribution; [GOVERNANCE.md](GOVERNANCE.md) for project decision-making; and [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) for community expectations.
+
+Use [GitHub issues](https://github.com/Atanseiye/energychain/issues) for **non-sensitive** bug reports and feature requests. See [SUPPORT.md](SUPPORT.md) for help and [SECURITY.md](SECURITY.md) for private vulnerability reporting. Never include real utility/customer data, meter credentials, or operational endpoints in public reports.
+
+**Before switching a private repository to public**, the maintainer must complete the [open-source launch checklist](docs/open-source-launch-checklist.md), including a full history and credential review. Publishing on PyPI already exposes release source archives; repository visibility is independent.
+
 ## Local development
 
 ```bash
@@ -136,7 +144,7 @@ See [architecture](docs/architecture.md) for contract boundaries and limitations
 
 ## Licensing and safety
 
-EnergyChain is MIT licensed; see [LICENSE](LICENSE). PyPI wheels and source archives are publicly downloadable even though the development repository remains private. This alpha-quality SDK is not certified for physical energy-equipment control.
+EnergyChain is MIT licensed; see [LICENSE](LICENSE). PyPI wheels and source archives are publicly downloadable independently of GitHub repository visibility. This alpha-quality SDK is not certified for physical energy-equipment control.
 
 
 ## Operational deployment boundary

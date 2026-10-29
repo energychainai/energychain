@@ -12,3 +12,15 @@ build/
 *.sqlite
 *.sqlite3
 .coverage
+
+# Local credentials and exports - never commit real operating data
+*.pem
+*.p12
+*.pfx
+*.key
+credentials.json
+secrets.json
+id_rsa
+id_ed25519
+*.db-journal
+*.sqlite-journal

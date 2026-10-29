@@ -1,29 +1,28 @@
 # Publishing the `energychain` distribution
 
-**Do not claim `pip install energychain` works until the release exists on https://pypi.org/project/energychain/** and the installed package has been smoke-tested using a clean environment.
+For each new release, confirm official PyPI availability and smoke-test the distribution in a clean environment before announcing that version. The existing releases include v0.1.0, v0.2.0 and v0.3.0.
 
 ## Existing license and prior release
 
-The repository remains private at https://github.com/Atanseiye/energychain.
+The source repository is https://github.com/Atanseiye/energychain. Before any change from private to public, complete [the open-source launch checklist](open-source-launch-checklist.md).
 EnergyChain v0.1.0 was published on October 26, 2026. Do not overwrite the tag
 or attempt to upload the same version or filenames to PyPI.
 
 The owner chose the MIT License, and `main` contains the approved `LICENSE`,
 `[project].license = "MIT"`, `license-files = ["LICENSE"]`, and the
-`setuptools>=77` build requirement. Keep all of these in the v0.2.0 release.
-The distribution wheel **and source archive** are publicly downloadable even
-though the development GitHub repository remains private.
+`setuptools>=77` build requirement. Keep all of these in subsequent releases.
+The distribution wheel **and source archive** are publicly downloadable
+regardless of whether the development GitHub repository is public or private.
 
 ## Version policy
 
-The deep SDK expansion was released as v0.2.0; this is the next v0.3.0 release, preserving all previous artifacts.
-Keep the `pyproject.toml` version, `energychain.__version__`, the release
-tag `v0.3.0`, and wheel/source metadata identical.
+The current published SDK is v0.3.0, with v0.1.0 and v0.2.0 retained. The steps below apply to a future version and must be updated for that version.
+Keep the `pyproject.toml` version, `energychain.__version__`, the new release tag and wheel/source metadata identical.
 Any subsequent functionality must land in a separately reviewed release.
 
 ## Account setup (existing publisher; verify before release)
 
-1. Confirm the currently published version at `https://pypi.org/pypi/energychain/json` and ensure `0.3.0` does not already exist. Never overwrite a published version.
+1. Confirm the currently published version at `https://pypi.org/pypi/energychain/json` and ensure the planned new version does not already exist. Never overwrite a published version.
 2. Sign in at https://pypi.org/manage/account/publishing/ and confirm the existing GitHub
    Trusted Publisher with these exact values:
 
@@ -36,13 +35,13 @@ Any subsequent functionality must land in a separately reviewed release.
    | Environment | `pypi` |
 
    Check the existing `energychain` project's Publishing settings; do not register or claim a new project.
-3. In repository **Settings → Environments**, create `pypi`. Keep the repository
-   private. Set deployment rules/reviewers supported by the account as appropriate.
+3. In repository **Settings → Environments**, verify the existing `pypi` environment.
+   Configure deployment rules/reviewers supported by the account as appropriate.
    The workflow grants `id-token: write` only to the isolated publishing job;
    no PyPI password or long-lived token belongs in the repository or its secrets.
 
-These account steps require authenticated owner access. A committed workflow does
-not configure the pending publisher in PyPI or verify the environment's settings.
+These account checks require authenticated owner access. A committed workflow does
+not independently prove the Trusted Publisher or environment configuration.
 
 ## Validate the release commit
 
@@ -52,14 +51,13 @@ python -m ruff check --isolated --select E4,E7,E9,F src tests scripts examples
 python -m pytest -q
 python -m build
 python -m twine check --strict dist/*
-python scripts/check_dist.py --tag v0.3.0 --require-license
+python scripts/check_dist.py --tag vX.Y.Z --require-license
 ```
 
 Start with an empty `dist/` directory. `python -m build` builds the wheel from the
 source archive, and `check_dist.py` checks that both contain the same SDK and
 matching name/version metadata. The license check is mandatory for publishing.
-Omit only `--require-license` when checking technical readiness before the owner
-has selected terms; that does not authorize a public release.
+Do not omit `--require-license` in an official release: this project already uses MIT.
 
 Install the built wheel into a new virtualenv with `--no-index --no-deps`, then run
 `python -I scripts/smoke_test.py` using that environment's Python. `-I` prevents the
@@ -69,8 +67,8 @@ checkout or `PYTHONPATH` from masking an incomplete wheel. CI does this on Pytho
 ## Publish and prove installation
 
 1. Ensure the exact release commit is on `main`, its CI is green, licensing is
-   settled and PyPI/account setup is complete.
-2. Create and publish a non-prerelease GitHub Release tagged `v0.3.0` at that commit.
+   settled, the source has passed the publication audit and PyPI/account setup is complete.
+2. Create and publish a non-prerelease GitHub Release tagged `vX.Y.Z` at that commit, with the actual new version.
    `.github/workflows/publish.yml` repeats CI, verifies main ancestry and tag/version
    agreement, validates licensing and tests the exact wheel before uploading.
 3. The separate `publish` job obtains short-lived PyPI credentials through GitHub
@@ -87,9 +85,9 @@ If upload succeeds but verification fails, inspect the verification error before
 retrying. PyPI release filenames cannot be overwritten. After a successful upload,
 rerun only the failed verification job rather than uploading the same files again.
 
-A **private GitHub repository does not make a PyPI distribution private**. Published wheels/sdists and their source can generally be downloaded by anyone. Decide whether the package source is suitable for public distribution before publishing.
+**PyPI distributions are public independently of GitHub visibility.** Published wheels/sdists and their source can generally be downloaded by anyone. Check redistributability before every release.
 
-## v0.3-specific verification
+## Provider and document-feature verification
 
 Run all provider contract mocks, protected document format parsers and tenant/site
 isolation tests. The core distribution must remain dependency-free; optional

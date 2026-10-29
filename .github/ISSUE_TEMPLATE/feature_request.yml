@@ -1,0 +1,23 @@
+name: Feature request
+description: Suggest an SDK feature, connector, or documentation improvement.
+title: '[Feature] '
+labels: ['enhancement']
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Developer problem
+      description: Describe what is difficult today, not just the proposed implementation.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior and developer experience
+    validations:
+      required: true
+  - type: textarea
+    id: safety
+    attributes:
+      label: Security, energy-system safety, and compatibility
+      description: Explain if the idea involves credentials, site authorization, third-party API access, or equipment control.

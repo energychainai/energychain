@@ -36,7 +36,7 @@ from .documents import (
 )
 from .intelligence_runtime import EnergyIntelligence
 
-__version__ = "0.3.0"
+__version__ = "0.4.0"
 __all__ = ["EnergyChain", "AssetKind", "Capability", "Metric", "EnergySite", "EnergyAsset",
            "EnergyReading", "EnergyEvent", "EnergyPlan", "Tariff", "Permission", "Principal",
            "SafetyPolicy", "Approval", "RuntimeEstimate", "estimate_battery_runtime",

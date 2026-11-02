@@ -17,7 +17,7 @@ from uuid import uuid4
 
 from energychain.security import Permission
 from energychain.intelligence_runtime.contracts import (
-    EvidenceError, EvidenceRecord, EvidenceRule, InputRef, IntelligencePlan,
+    EvidenceError, EvidenceRecord, InputRef, IntelligencePlan,
     IntelligenceResult, OutputRef, PlanRejected, SourceEvidence, StepRecord,
     ToolStep, VerifiedFinding,
 )
@@ -79,7 +79,8 @@ def _hash(value: Any) -> str:
 def _reading_sources(value: Any) -> tuple[SourceEvidence,...]:
     out=[]
     def walk(node, depth=0):
-        if depth>16 or len(out)>200: return
+        if depth>16 or len(out)>200:
+            return
         if isinstance(node, Mapping):
             # Cleaned EnergyReading, or direct SDK reading dictionary.
             if {"asset_id","metric","value","timestamp","source","quality"}.issubset(node):
@@ -89,9 +90,11 @@ def _reading_sources(value: Any) -> tuple[SourceEvidence,...]:
                        "frequency_hz":"Hz","temperature_c":"°C"}
                 out.append(SourceEvidence(str(node["asset_id"]),str(metric),node["value"],
                         units.get(str(metric),""),str(node["source"]),str(node["quality"]),str(node["timestamp"])))
-            for val in node.values():walk(val,depth+1)
+            for val in node.values():
+                walk(val,depth+1)
         elif isinstance(node,list):
-            for val in node:walk(val,depth+1)
+            for val in node:
+                walk(val,depth+1)
     walk(value)
     return tuple(out[:200])
 
@@ -109,12 +112,15 @@ def _lookup(data: Any, path: tuple[str | int,...]) -> Any:
 
 
 def _resolve(value: Any,inputs:Mapping[str,Any],outputs:Mapping[str,Any], *, depth=0):
-    if depth>16:raise PlanRejected("input depth exceeded")
+    if depth>16:
+        raise PlanRejected("input depth exceeded")
     if isinstance(value,InputRef):
-        if value.name not in inputs:raise PlanRejected("missing declared task input: "+value.name)
+        if value.name not in inputs:
+            raise PlanRejected("missing declared task input: "+value.name)
         return inputs[value.name]
     if isinstance(value,OutputRef):
-        if value.step_id not in outputs:raise PlanRejected("output reference is unavailable: "+value.step_id)
+        if value.step_id not in outputs:
+            raise PlanRejected("output reference is unavailable: "+value.step_id)
         return _lookup(outputs[value.step_id],value.path)
     if isinstance(value,Mapping):
         return {str(k):_resolve(v,inputs,outputs,depth=depth+1) for k,v in value.items()}
@@ -124,30 +130,37 @@ def _resolve(value: Any,inputs:Mapping[str,Any],outputs:Mapping[str,Any], *, dep
 
 
 def _references(value:Any):
-    if isinstance(value,OutputRef):yield value.step_id
+    if isinstance(value,OutputRef):
+        yield value.step_id
     elif isinstance(value,Mapping):
-        for v in value.values():yield from _references(v)
+        for v in value.values():
+            yield from _references(v)
     elif isinstance(value,(tuple,list)):
-        for v in value:yield from _references(v)
+        for v in value:
+            yield from _references(v)
 
 
 def _parse_plan(raw:Any)->IntelligencePlan:
     """Strict model plan: JSON literals and references, never Python expressions."""
-    if isinstance(raw,IntelligencePlan):return raw
+    if isinstance(raw,IntelligencePlan):
+        return raw
     if not isinstance(raw,Mapping) or set(raw)!={"id","version","steps"}:
         raise PlanRejected("plan must contain id, version and steps")
     def transform(v):
         if isinstance(v,Mapping):
-            if set(v)=={"$input"} and isinstance(v["$input"],str):return InputRef(v["$input"])
+            if set(v)=={"$input"} and isinstance(v["$input"],str):
+                return InputRef(v["$input"])
             if set(v)=={"$output","path"} and isinstance(v["$output"],str) and isinstance(v["path"],list):
                 if not all(isinstance(x,(str,int)) and not isinstance(x,bool) for x in v["path"]):
                     raise PlanRejected("invalid output path")
                 return OutputRef(v["$output"],tuple(v["path"]))
             return {k:transform(x) for k,x in v.items()}
-        if isinstance(v,list):return [transform(x) for x in v]
+        if isinstance(v,list):
+            return [transform(x) for x in v]
         return v
     steps=raw["steps"]
-    if not isinstance(steps,list):raise PlanRejected("steps must be an array")
+    if not isinstance(steps,list):
+        raise PlanRejected("steps must be an array")
     out=[]
     for x in steps:
         if not isinstance(x,Mapping) or set(x)!={"id","tool","arguments"} or not isinstance(x["arguments"],Mapping):
@@ -159,7 +172,8 @@ def _parse_plan(raw:Any)->IntelligencePlan:
 def _plan_validation(plan:IntelligencePlan, permitted:set[str], max_steps:int):
     if not isinstance(plan.id,str) or not _ID.fullmatch(plan.id) or not isinstance(plan.version,int) or isinstance(plan.version,bool) or plan.version<1:
         raise PlanRejected("invalid plan identifier or version")
-    if not 1<=len(plan.steps)<=max_steps:raise PlanRejected("workflow step limit exceeded")
+    if not 1<=len(plan.steps)<=max_steps:
+        raise PlanRejected("workflow step limit exceeded")
     seen=set()
     for s in plan.steps:
         if not isinstance(s.id,str) or not _ID.fullmatch(s.id) or s.id in seen:
@@ -186,7 +200,8 @@ class EnergyIntelligence:
     No action control, external scheduling, implicit elevated permissions, or hosted service.
     """
     def __init__(self,sdk,*,model=None,store=None,max_steps:int=8,max_input_age_seconds:float|None=None):
-        if not 1<=max_steps<=12:raise ValueError("max_steps must be 1..12")
+        if not 1<=max_steps<=12:
+            raise ValueError("max_steps must be 1..12")
         self.sdk,self.model,self.store,self.max_steps=sdk,model,store,max_steps
         self.max_input_age_seconds=max_input_age_seconds
 
@@ -194,12 +209,15 @@ class EnergyIntelligence:
         choices={x["name"] for x in self.sdk.tools.describe()
                  if x["permission"] in (Permission.READ.value,Permission.ANALYZE.value)
                  and x["name"]!="energy_intelligence"}
-        if allowed_tools is not None:choices.intersection_update(set(allowed_tools))
+        if allowed_tools is not None:
+            choices.intersection_update(set(allowed_tools))
         return choices
 
     def _propose(self,task, inputs, permitted):
-        if self.model is None:raise PlanRejected("AI planning requires an injected TextModel")
-        if not permitted:raise PlanRejected("AI planning requires an explicit nonempty allowlist")
+        if self.model is None:
+            raise PlanRejected("AI planning requires an injected TextModel")
+        if not permitted:
+            raise PlanRejected("AI planning requires an explicit nonempty allowlist")
         desc=[s for s in self.sdk.tools.describe() if s["name"] in permitted]
         guide=("You plan READ/ANALYZE EnergyChain tools only. Respond with a single JSON object "
                "with EXACTLY id, version, steps. id='ai-task', version=1. steps is a list of "
@@ -208,9 +226,12 @@ class EnergyIntelligence:
                "for an earlier step result. Never invent readings or choose physical actions. "
                "Allowed tools: "+json.dumps(desc,sort_keys=True))
         answer=self.model.generate(guide,task,"Available input field names and values: "+json.dumps(_clean(inputs)))
-        if not isinstance(answer,str) or len(answer)>16_384:raise PlanRejected("model plan too large")
-        try:obj=json.loads(answer)
-        except (ValueError,TypeError) as exc:raise PlanRejected("model returned invalid plan JSON") from exc
+        if not isinstance(answer,str) or len(answer)>16_384:
+            raise PlanRejected("model plan too large")
+        try:
+            obj=json.loads(answer)
+        except (ValueError,TypeError) as exc:
+            raise PlanRejected("model returned invalid plan JSON") from exc
         return _parse_plan(obj)
 
     def run(self,*,task:str,principal,site_id:str,inputs:Mapping[str,Any]|None=None,
@@ -222,15 +243,18 @@ class EnergyIntelligence:
         if not isinstance(site_id,str) or not site_id or len(site_id)>128:
             raise PlanRejected("invalid site id")
         clean_inputs=_clean(inputs if inputs is not None else {})
-        if not isinstance(clean_inputs,dict):raise PlanRejected("task inputs must be a mapping")
+        if not isinstance(clean_inputs,dict):
+            raise PlanRejected("task inputs must be a mapping")
         _blob(clean_inputs)
         permitted=self._permitted(allowed_tools)
         # Auth check happens before LLM planning and prevents cross-site input exposure.
         self.sdk.tools.policy.authorize(principal,site_id,Permission.READ)
         if plan is None:
-            if allowed_tools is None:raise PlanRejected("AI-planned tasks require explicit allowed_tools")
+            if allowed_tools is None:
+                raise PlanRejected("AI-planned tasks require explicit allowed_tools")
             selected=self._propose(task,clean_inputs,permitted)
-        else:selected=_parse_plan(plan)
+        else:
+            selected=_parse_plan(plan)
         _plan_validation(selected,permitted,self.max_steps)
         rid=run_id or uuid4().hex
         if not isinstance(rid,str) or not 1<=len(rid)<=128 or any(ord(c)<32 for c in rid):
@@ -240,8 +264,13 @@ class EnergyIntelligence:
                                "allowed_tools":sorted(permitted),"synthesize":synthesize})
         if self.store is not None:
             existing=self.store.reserve(rid,principal.id,site_id,plan_fingerprint)
-            if existing is not None:return existing
-        values={};steps=[];evidence=[];findings=[];error=None
+            if existing is not None:
+                return existing
+        values={}
+        steps=[]
+        evidence=[]
+        findings=[]
+        error=None
         for s in selected.steps:
             start=perf_counter()
             try:
@@ -272,7 +301,8 @@ class EnergyIntelligence:
                                         round((perf_counter()-start)*1000,3),{},error))
                 break
         if error and len(steps)<len(selected.steps):
-            for remaining in selected.steps[len(steps):]:
+            for remaining in selected.steps[len(steps):
+                ]:
                 steps.append(StepRecord(remaining.id,remaining.tool,"blocked",None,0.0,{},
                                         "UpstreamStepFailed"))
         for rule in selected.rules if error is None else ():
@@ -287,7 +317,8 @@ class EnergyIntelligence:
             except Exception as exc:
                 error=type(exc).__name__
                 break
-        interpretation=None;interp_status="not_requested"
+        interpretation=None
+        interp_status="not_requested"
         if synthesize and error is None:
             if self.model is None:
                 interp_status="unavailable"
@@ -305,12 +336,14 @@ class EnergyIntelligence:
                         raise EvidenceError("invalid model interpretation")
                     interp_status="generated_unverified"
                 except Exception:
-                    interpretation=None;interp_status="generation_failed"
+                    interpretation=None
+                    interp_status="generation_failed"
         result=IntelligenceResult(rid,task,"failed" if error and not values else
             "partial" if error else "completed",selected.id,selected.version,site_id,
             values,tuple(steps),tuple(evidence),tuple(findings),interpretation,
             interp_status,error,_now(),_hash(selected),_hash(clean_inputs))
-        if self.store is not None:self.store.finish(result)
+        if self.store is not None:
+            self.store.finish(result)
         return result
 
     def register_tool(self,name:str="energy_intelligence"):
@@ -319,7 +352,8 @@ class EnergyIntelligence:
         Explicit plan only: do not expose model-powered planning as a nested tool.
         """
         from energychain.tools import ToolSpec
-        if name!="energy_intelligence":raise ValueError("reserved tool name only")
+        if name!="energy_intelligence":
+            raise ValueError("reserved tool name only")
         def handler(*,site_id,principal,task,plan,inputs=None):
             return self.run(task=task,site_id=site_id,principal=principal,
                             plan=plan,inputs=inputs,allowed_tools=self._permitted(None),synthesize=False)

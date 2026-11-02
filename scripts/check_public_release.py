@@ -15,7 +15,7 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 PATTERNS = {
     "private key": re.compile(rb"-----BEGIN (?:RSA |EC |DSA |OPENSSH |ENCRYPTED )?PRIVATE KEY-----"),
-    "Groq API key": re.compile(rb"\\bgsk_[A-Za-z0-9]{24,}\\b"),
+    "Groq API key": re.compile(rb"\bgsk_[A-Za-z0-9]{24,}\b"),
     "OpenAI key": re.compile(rb"\bsk-(?:proj-|svcacct-|admin-)?[A-Za-z0-9_-]{20,}\b"),
     "GitHub token": re.compile(rb"\b(?:ghp|gho|ghu|ghs|ghr)_[A-Za-z0-9]{30,}\b"),
     "GitHub fine-grained token": re.compile(rb"\bgithub_pat_[A-Za-z0-9_]{30,}\b"),

@@ -2,7 +2,7 @@
 
 **EnergyChain is the developer infrastructure through which AI applications can understand, interact with, and safely optimize energy systems—from solar installations and batteries to mini-grids, utilities, and electricity networks.**
 
-> Status: **v0.3.0 alpha**. Offline-first, Python-first, and read-only by default. Simulated energy data are **not live device measurements**.
+> Status: **v0.4.0 alpha**. Offline-first, Python-first, and read-only by default. Simulated energy data are **not live device measurements**.
 
 EnergyChain brings composable, vendor-neutral energy data types, connectors, safe callable tools, storage, deterministic energy calculations, a pluggable agent interface, and in-process workflows to Python developers. EnergyChain is a **separate project** from Energy Data Network (EDN).
 
@@ -14,10 +14,10 @@ Install the current release from the official PyPI index:
 python -m pip install --upgrade energychain
 ```
 
-To pin the current 0.3.0 alpha SDK:
+To pin the EnergyIntelligence-enabled 0.4.0 alpha SDK after its verified PyPI release:
 
 ```bash
-python -m pip install energychain==0.3.0
+python -m pip install energychain==0.4.0
 ```
 
 For development, install the repository checkout locally:
@@ -27,6 +27,27 @@ python -m pip install -e .
 ```
 
 Requires Python 3.10 or newer. The core package uses **only Python standard-library runtime dependencies**.
+
+## EnergyIntelligence (v0.4)
+
+EnergyChain adds a **model-independent, evidence-backed intelligence workflow runtime**
+for developers. Use `chain.intelligence().run(...)` with typed manual inputs, register
+`energy_intelligence` inside an existing `EnergyWorkflow`, or subscribe through
+`IntelligenceEventSubscription` to trusted `EnergyEventBus` events.
+
+- Real READ/ANALYZE tools, validated dependency references, and site-scoped authorization.
+- Provenance, source-quality and SHA-256 fingerprints linked to actual tool results.
+- Deterministic evidence rules, blocked-step status and SQLite run deduplication.
+- Optional injected `TextModel` for bounded AI planning or unverified interpretation.
+- **No default LLM; Groq, OpenAI, Ollama and other model adapters remain opt-in.**
+
+```bash
+python examples/intelligence_workflow.py
+python examples/intelligence_incident_event.py
+```
+
+Start with [the EnergyIntelligence developer guide](docs/intelligence-runtime.md).
+This is an in-process SDK, not a distributed monitoring service or an energy-device controller.
 
 ## Model Gateway and Document Intelligence (v0.3)
 
@@ -41,9 +62,9 @@ and explicit energy quantities. The SQLite search index enforces site permission
 and supports optional developer-supplied embeddings.
 
 ~~~bash
-python -m pip install 'energychain[models]==0.3.0'
-python -m pip install 'energychain[documents]==0.3.0'
-python -m pip install 'energychain[all]==0.3.0'
+python -m pip install 'energychain[models]==0.4.0'
+python -m pip install 'energychain[documents]==0.4.0'
+python -m pip install 'energychain[all]==0.4.0'
 ~~~
 
 See [Model Gateway](docs/model-gateway.md) and

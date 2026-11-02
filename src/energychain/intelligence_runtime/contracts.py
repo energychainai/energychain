@@ -25,6 +25,7 @@ class ToolStep:
     id: str
     tool: str
     arguments: Mapping[str, Any] = field(default_factory=dict)
+    depends_on: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)

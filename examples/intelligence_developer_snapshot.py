@@ -11,7 +11,7 @@ from tempfile import TemporaryDirectory
 
 from energychain import EnergyChain, EnergyEvent, EnergyWorkflow, WorkflowStep
 from energychain.intelligence_runtime import (
-    EnergyIntelligence, EvidenceRule, InputRef, IntelligenceEventRule,
+    EvidenceRule, InputRef, IntelligenceEventRule,
     IntelligenceEventSubscription, IntelligencePlan, OutputRef,
     SQLiteIntelligenceStore, ToolStep, format_console,
 )

@@ -165,7 +165,8 @@ def _parse_plan(raw:Any)->IntelligencePlan:
     for x in steps:
         if not isinstance(x,Mapping) or not {"id","tool","arguments"}.issubset(x) or set(x)-{"id","tool","arguments","depends_on"} or not isinstance(x["arguments"],Mapping):
             raise PlanRejected("invalid model-supplied step")
-        out.append(ToolStep(x["id"], x["tool"], transform(x["arguments"]),\n                            tuple(x.get("depends_on", ()))))
+        out.append(ToolStep(x["id"], x["tool"], transform(x["arguments"]),
+                            tuple(x.get("depends_on", ()))))
     return IntelligencePlan(raw["id"],raw["version"],tuple(out))
 
 
@@ -285,10 +286,12 @@ class EnergyIntelligence:
                     now=datetime.now(timezone.utc)
                     for src in sources:
                         ts=datetime.fromisoformat(src.observed_at.replace("Z","+00:00"))
-                        age_seconds = (now - ts).total_seconds() if ts.tzinfo else float("inf")\n                        if age_seconds < -30 or age_seconds > self.max_input_age_seconds:
+                        age_seconds = (now - ts).total_seconds() if ts.tzinfo else float("inf")
+                        if age_seconds < -30 or age_seconds > self.max_input_age_seconds:
                             raise EvidenceError("stale or future energy reading")
                 evidence_id=f"{rid}:{s.id}"
-                parents=tuple(dict.fromkeys(f"{rid}:{dep}" for dep in\n                     (*_references(s.arguments), *s.depends_on)))
+                parents=tuple(dict.fromkeys(f"{rid}:{dep}" for dep in
+                     (*_references(s.arguments), *s.depends_on)))
                 record=EvidenceRecord(evidence_id,s.id,s.tool,_hash(safe_arguments),
                                       _hash(cleaned),sources,cleaned,_now(),parents)
                 values[s.id]=cleaned

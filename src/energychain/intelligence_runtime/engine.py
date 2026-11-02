@@ -98,8 +98,8 @@ def _hash(value: Any) -> str:
 def _reading_sources(value: Any) -> tuple[SourceEvidence,...]:
     out=[]
     def walk(node, depth=0):
-        if depth>16 or len(out)>200:
-            return
+        if depth>20:
+            raise EvidenceError("reading nesting exceeds evidence limit")
         if isinstance(node, Mapping):
             # Cleaned EnergyReading, or direct SDK reading dictionary.
             if {"asset_id","metric","value","timestamp","source","quality"}.issubset(node):
@@ -115,7 +115,7 @@ def _reading_sources(value: Any) -> tuple[SourceEvidence,...]:
             for val in node:
                 walk(val,depth+1)
     walk(value)
-    return tuple(out[:200])
+    return tuple(out)
 
 
 def _lookup(data: Any, path: tuple[str | int,...]) -> Any:
@@ -245,7 +245,19 @@ class EnergyIntelligence:
             self.sdk.tools.policy.authorize(
                 principal, site_id, Permission(specs[step.tool]["permission"]),
                 action=step.tool, parameters=step.arguments)
+        for output in result.outputs.values():
+            self._validate_freshness(_reading_sources(output))
         return result
+
+    def _validate_freshness(self, sources):
+        if self.max_input_age_seconds is None:
+            return
+        now=datetime.now(timezone.utc)
+        for src in sources:
+            ts=datetime.fromisoformat(src.observed_at.replace("Z","+00:00"))
+            age_seconds = (now - ts).total_seconds() if ts.tzinfo else float("inf")
+            if age_seconds < -30 or age_seconds > self.max_input_age_seconds:
+                raise EvidenceError("stale or future energy reading")
 
     def _propose(self,task, inputs, permitted):
         if self.model is None:
@@ -328,18 +340,13 @@ class EnergyIntelligence:
                 cleaned=_clean(result)
                 _blob(cleaned)
                 sources=_reading_sources(cleaned)
-                if self.max_input_age_seconds is not None:
-                    now=datetime.now(timezone.utc)
-                    for src in sources:
-                        ts=datetime.fromisoformat(src.observed_at.replace("Z","+00:00"))
-                        age_seconds = (now - ts).total_seconds() if ts.tzinfo else float("inf")
-                        if age_seconds < -30 or age_seconds > self.max_input_age_seconds:
-                            raise EvidenceError("stale or future energy reading")
+                # All readings are validated before limiting the provenance summary.
+                self._validate_freshness(sources)
                 evidence_id=f"{rid}:{s.id}"
                 parents=tuple(dict.fromkeys(f"{rid}:{dep}" for dep in
                      (*_references(s.arguments), *s.depends_on)))
                 record=EvidenceRecord(evidence_id,s.id,s.tool,_hash(safe_arguments),
-                                      _hash(cleaned),sources,cleaned,_now(),parents)
+                                      _hash(cleaned),sources[:200],cleaned,_now(),parents)
                 values[s.id]=cleaned
                 typed_values[s.id]=_clean(result,serialize=False)
                 evidence.append(record)

@@ -132,6 +132,7 @@ The service principal comes from a **trusted host**, never the event payload. Th
 - Input/output references are validated paths; Python `eval`, arbitrary scripts, and recursive agent loops are absent.
 - Tool failures are recorded as errors, and downstream steps become `blocked`.
 - An optional freshness limit rejects stale/future observed readings.
+- Freshness validation covers every returned reading before the provenance summary is capped at 200 sources per tool. Cached readings must still satisfy the configured freshness limit when replayed.
 - A SQLite run ledger supports completed-run replay; incomplete reservations fail closed, requiring operator reconciliation.
 - Completed runs bind the original request, typed inputs and principal site scope to the run ID. A retry reuses the persisted selected steps and result without another model call, then checks current tool permissions and blocked actions before exposing outputs. A changed request or site scope raises `RunConflict`.
 - Datetime task inputs and dependent tool values retain their types for tool invocation. Evidence and model context use serialized, redacted copies.

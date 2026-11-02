@@ -9,6 +9,7 @@ from energychain import EnergyChain, Permission
 from energychain.exceptions import PermissionDenied
 from energychain.intelligence_runtime import (
     InputRef, IntelligencePlan, OutputRef, RunConflict, SQLiteIntelligenceStore, ToolStep,
+    EvidenceError, as_dict, to_json,
 )
 from energychain.tools import ToolSpec
 
@@ -181,3 +182,91 @@ def test_datetime_and_text_inputs_do_not_share_a_cached_request(tmp_path):
         assert engine.run(**request).status == "completed"
         with pytest.raises(RunConflict):
             engine.run(**{**request, "inputs": {"when": instant.isoformat()}})
+
+
+@pytest.mark.parametrize("step_id", ["token", "api_key", "authorization"])
+def test_structural_step_ids_survive_persistence_and_json_adapters(tmp_path, step_id):
+    sdk = EnergyChain.demo()
+    principal = sdk.principal("operator", allowed_sites={"demo-site"})
+    sdk.tools.register(ToolSpec("payload", "Synthetic output", Permission.READ,
+                                lambda *, site_id: {"value": 7, "api_key": "test-placeholder"}))
+    plan = IntelligencePlan("structural-ids", 1, (ToolStep(step_id, "payload"),))
+    with SQLiteIntelligenceStore(tmp_path / "runs.sqlite") as store:
+        engine = sdk.intelligence(store=store)
+        request = dict(task="Read payload", principal=principal, site_id="demo-site",
+                       plan=plan, run_id="structural-id-run")
+        initial = engine.run(**request)
+        replay = engine.run(**request)
+        expected = {step_id: {"value": 7, "api_key": "[REDACTED]"}}
+        assert initial.outputs == replay.outputs == expected
+        assert replay == initial
+        assert as_dict(initial)["outputs"] == expected
+        assert json.loads(to_json(initial))["outputs"] == expected
+
+
+@pytest.mark.parametrize("stale", [False, True])
+def test_freshness_validates_readings_beyond_the_provenance_summary(stale):
+    sdk = EnergyChain.demo()
+    principal = sdk.principal("operator", allowed_sites={"demo-site"})
+    now = datetime.now(timezone.utc)
+    reading = {"asset_id": "demo-load", "metric": "power_w", "value": 1,
+               "source": "test", "quality": "observed", "timestamp": now.isoformat()}
+    last = {**reading, "timestamp": (now - timedelta(days=10)).isoformat()} if stale else reading
+    sdk.tools.register(ToolSpec("many-readings", "Synthetic history", Permission.READ,
+                                lambda *, site_id: [reading] * 200 + [last]))
+    plan = IntelligencePlan("many-readings", 1, (ToolStep("history", "many-readings"),))
+    result = sdk.intelligence(max_input_age_seconds=60).run(
+        task="Validate history", principal=principal, site_id="demo-site", plan=plan)
+    if stale:
+        assert result.status == "failed"
+        assert result.error_code == "EvidenceError"
+        assert not result.outputs
+    else:
+        assert result.status == "completed"
+        assert len(result.outputs["history"]) == 201
+        assert len(result.evidence[0].observed_sources) == 200
+
+
+def test_freshness_cannot_skip_deeply_nested_readings():
+    sdk = EnergyChain.demo()
+    principal = sdk.principal("operator", allowed_sites={"demo-site"})
+    payload = {"asset_id": "demo-load", "metric": "power_w", "value": 1,
+               "source": "test", "quality": "observed",
+               "timestamp": (datetime.now(timezone.utc) - timedelta(days=10)).isoformat()}
+    for _ in range(17):
+        payload = {"nested": payload}
+    sdk.tools.register(ToolSpec("nested-reading", "Synthetic history", Permission.READ,
+                                lambda *, site_id: payload))
+    plan = IntelligencePlan("nested-reading", 1, (ToolStep("history", "nested-reading"),))
+    result = sdk.intelligence(max_input_age_seconds=60).run(
+        task="Validate history", principal=principal, site_id="demo-site", plan=plan)
+    assert result.status == "failed"
+    assert result.error_code == "EvidenceError"
+
+
+def test_cached_readings_must_still_meet_the_current_freshness_limit(tmp_path, monkeypatch):
+    from energychain.intelligence_runtime import engine as runtime
+
+    class Clock(datetime):
+        current = datetime.now(timezone.utc)
+
+        @classmethod
+        def now(cls, tz=None):
+            return cls.current.astimezone(tz)
+
+    monkeypatch.setattr(runtime, "datetime", Clock)
+    sdk = EnergyChain.demo()
+    principal = sdk.principal("operator", allowed_sites={"demo-site"})
+    reading = {"asset_id": "demo-load", "metric": "power_w", "value": 1,
+               "source": "test", "quality": "observed", "timestamp": Clock.current.isoformat()}
+    sdk.tools.register(ToolSpec("reading", "Synthetic history", Permission.READ,
+                                lambda *, site_id: reading))
+    plan = IntelligencePlan("freshness-replay", 1, (ToolStep("history", "reading"),))
+    with SQLiteIntelligenceStore(tmp_path / "runs.sqlite") as store:
+        engine = sdk.intelligence(store=store, max_input_age_seconds=60)
+        request = dict(task="Validate reading", principal=principal, site_id="demo-site",
+                       plan=plan, run_id="freshness-run")
+        assert engine.run(**request).status == "completed"
+        Clock.current += timedelta(minutes=2)
+        with pytest.raises(EvidenceError):
+            engine.run(**request)

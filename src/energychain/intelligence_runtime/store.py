@@ -11,7 +11,7 @@ from energychain.intelligence_runtime.contracts import (
     EvidenceRecord, IntelligenceResult, RunConflict, SourceEvidence,
     StepRecord, VerifiedFinding,
 )
-from energychain.intelligence_runtime.engine import _clean
+from energychain.intelligence_runtime.formatters import as_dict
 
 
 def _rehydrate(obj):
@@ -78,7 +78,7 @@ class SQLiteIntelligenceStore:
                 raise
 
     def finish(self,result:IntelligenceResult):
-        payload=json.dumps(_clean(result),sort_keys=True,allow_nan=False)
+        payload=json.dumps(as_dict(result),sort_keys=True,allow_nan=False)
         with self._lock,self._db:
             cur=self._db.execute("UPDATE intelligence_runs SET state='finished',result=? WHERE run_id=? AND state='reserved'",
                                  (payload,result.run_id))

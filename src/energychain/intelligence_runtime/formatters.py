@@ -8,7 +8,11 @@ from energychain.intelligence_runtime.engine import _clean
 
 
 def as_dict(result) -> dict:
-    return _clean(result)
+    payload = _clean(result)
+    # Step IDs are structural labels, not payload fields containing credentials.
+    # Sanitize each tool's output while preserving its outer step-ID key.
+    payload["outputs"] = {step_id: _clean(value) for step_id, value in result.outputs.items()}
+    return payload
 
 
 def to_json(result, *, indent=2) -> str:

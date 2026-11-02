@@ -17,6 +17,8 @@
 - Completed-run replay rechecks current tool permissions and blocked actions before returning stored outputs, and binds the request to the principal's site scope.
 - Model-planned retries replay the persisted selected steps and result using the original request identity, without requiring another provider call.
 - Datetime task inputs and dependent tool values retain their types during invocation; evidence remains serialized and recognized secret fields stay redacted.
+- Freshness limits validate every returned reading, including readings beyond the 200-source provenance summary and cached results at replay time.
+- SQLite replay and JSON adapters preserve structural step IDs while continuing to redact credential fields inside tool payloads.
 
 ## Developer examples
 

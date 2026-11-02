@@ -61,3 +61,6 @@ __all__ += ["ModelGateway", "ModelResult", "ModelTrace", "TokenUsage", "ModelErr
             "EnergyKnowledgeBase", "DocumentLimits", "DocumentError", "DocumentLimitError",
             "RetrievedPassage", "KnowledgeAnswer", "parse_document", "chunk_document",
             "energy_facts"]
+
+from .intelligence_runtime import EnergyIntelligence
+__all__ += ["EnergyIntelligence"]

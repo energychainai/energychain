@@ -43,11 +43,13 @@ class SQLiteIntelligenceStore:
             try:
                 row=self._db.execute("SELECT principal_id,site_id,fingerprint,state,result FROM intelligence_runs WHERE run_id=?",(run_id,)).fetchone()
                 if row:
-                    if row[:3]!=(principal_id,site_id,fingerprint):
+                    if row[:
+                        3]!=(principal_id,site_id,fingerprint):
                         raise RunConflict("run id already bound to a different task or scope")
                     if row[3]!="finished":
                         raise RunConflict("run is incomplete; operator reconciliation required")
-                    if row[4] is None:raise RunConflict("stored result missing")
+                    if row[4] is None:
+                        raise RunConflict("stored result missing")
                     result=_rehydrate(json.loads(row[4]))
                 else:
                     self._db.execute("INSERT INTO intelligence_runs(run_id,principal_id,site_id,fingerprint,state) VALUES(?,?,?,?,?)",
@@ -64,7 +66,8 @@ class SQLiteIntelligenceStore:
         with self._lock,self._db:
             cur=self._db.execute("UPDATE intelligence_runs SET state='finished',result=? WHERE run_id=? AND state='reserved'",
                                  (payload,result.run_id))
-            if cur.rowcount!=1:raise RunConflict("run reservation is missing or already finished")
+            if cur.rowcount!=1:
+                raise RunConflict("run reservation is missing or already finished")
 
     def close(self):
         with self._lock:self._db.close()

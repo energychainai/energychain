@@ -40,7 +40,7 @@ jobs:
         run: python -m pytest -q
       - name: Execute real EnergyIntelligence developer snapshot
         run: python examples/intelligence_developer_snapshot.py
-      - name: Build wheel from source distribution
+      - name: Execute seven-step event-driven investigation\n        run: python examples/intelligence_incident_event.py\n      - name: Build wheel from source distribution
         run: python -m build
       - name: Verify package metadata and contents
         run: |

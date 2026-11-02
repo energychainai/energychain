@@ -16,7 +16,7 @@ regardless of whether the development GitHub repository is public or private.
 
 ## Version policy
 
-The current published SDK is v0.3.0, with v0.1.0 and v0.2.0 retained. The steps below apply to a future version and must be updated for that version.
+The last independently verified published SDK before this change is v0.3.0. The next prepared SDK release is v0.4.0. The steps below apply to a future version and must be updated for that version.
 Keep the `pyproject.toml` version, `energychain.__version__`, the new release tag and wheel/source metadata identical.
 Any subsequent functionality must land in a separately reviewed release.
 
@@ -95,3 +95,15 @@ Run all provider contract mocks, protected document format parsers and tenant/si
 isolation tests. The core distribution must remain dependency-free; optional
 models and documents extras must be metadata-scoped. Only a non-prerelease GitHub
 Release from tested main may trigger the existing PyPI Trusted Publisher.
+
+## v0.4.0 pre-publication checklist
+
+Before creating the v0.4.0 tag, confirm the current project has an active
+Trusted Publisher for GitHub owner `energychainai`, repository `energychain`,
+workflow `publish.yml` and environment `pypi`. Previous release provenance
+used the former personal owner. This identity must match before publication.
+
+Run CI on the exact release commit and require all Python versions, the
+model-independent integration test, event investigation example, and installed
+wheel test to succeed. After publishing, confirm PyPI file hashes and that an
+unpinned `pip install --upgrade energychain` gets v0.4.0.

@@ -22,7 +22,7 @@ from energychain.intelligence_runtime.contracts import (
     ToolStep, VerifiedFinding,
 )
 
-_ID = re.compile(r"^[a-zA-Z][a-zA-Z0-9_-]{0,63}$")
+_ID = re.compile(r"^[a-zA-Z][a-zA-Z0-9_.-]{0,63}$")
 _FORBIDDEN_KEYS = ("api_key", "token", "secret", "password", "authorization", "credential", "private_key")
 _MAX_BYTES = 512_000
 _OPERATORS = {"lt":lambda a,b:a<b,"le":lambda a,b:a<=b,"gt":lambda a,b:a>b,

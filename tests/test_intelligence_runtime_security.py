@@ -5,7 +5,7 @@ from energychain import EnergyChain, EnergyEvent
 from energychain.security import Permission
 from energychain.tools import ToolSpec
 from energychain.intelligence_runtime import (
-    IntelligencePlan, ToolStep, OutputRef, PlanRejected,
+    IntelligencePlan, ToolStep, PlanRejected,
     SQLiteIntelligenceStore, IntelligenceEventRule, IntelligenceEventSubscription,
     RunConflict
 )
@@ -34,7 +34,7 @@ def test_idempotent_sqlite_replay_without_calling_provider_twice(tmp_path):
 
 def test_incomplete_run_requires_reconciliation(tmp_path):
     with SQLiteIntelligenceStore(tmp_path/"runs.sqlite") as store:
-        assert store.reserve("run1","user1","demo-site","sha")==None
+        assert store.reserve("run1","user1","demo-site","sha") is None
         with pytest.raises(RunConflict):
             store.reserve("run1","user1","demo-site","sha")
 
@@ -42,7 +42,8 @@ def test_incomplete_run_requires_reconciliation(tmp_path):
 def test_event_trigger_reuses_trusted_principal_and_deduplicates(tmp_path):
     sdk=EnergyChain.demo()
     principal=sdk.principal("trusted-worker", allowed_sites={"demo-site"})
-    results=[];errors=[]
+    results=[]
+    errors=[]
     with SQLiteIntelligenceStore(tmp_path/"events.sqlite") as store:
         engine=sdk.intelligence(store=store)
         subscription=IntelligenceEventSubscription(

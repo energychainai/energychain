@@ -86,3 +86,26 @@ def test_generated_interpretation_is_not_verified_evidence():
                                                 principal=user,plan=plan,synthesize=True)
     assert report.status=="completed"
     assert report.interpretation_status=="generated_unverified"
+
+
+def test_explicit_evidence_dependencies_link_state_and_calculation():
+    sdk = EnergyChain.demo()
+    user = sdk.principal("provenance-test", allowed_sites={"demo-site"})
+    plan = IntelligencePlan("complete-backup-provenance", 1, (
+        ToolStep("load", "get_asset_state",
+                 {"asset_id": "demo-load", "metric": "power_w"}),
+        ToolStep("battery", "get_battery_state",
+                 {"asset_id": "demo-battery"}),
+        ToolStep("runtime", "estimate_battery_runtime",
+                 {"battery_id": "demo-battery",
+                  "load_w": OutputRef("load", ("value",)),
+                  "reserve_pct": 20},
+                 depends_on=("battery",)),
+    ))
+    result = sdk.intelligence().run(task="Check derived backup", site_id="demo-site",
+                                    principal=user, plan=plan)
+    assert result.status == "completed"
+    assert set(result.evidence[2].parent_evidence_ids) == {
+        result.evidence[0].id, result.evidence[1].id
+    }
+    assert len(result.evidence[1].observed_sources) == 2

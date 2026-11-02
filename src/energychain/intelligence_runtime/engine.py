@@ -163,9 +163,9 @@ def _parse_plan(raw:Any)->IntelligencePlan:
         raise PlanRejected("steps must be an array")
     out=[]
     for x in steps:
-        if not isinstance(x,Mapping) or set(x)!={"id","tool","arguments"} or not isinstance(x["arguments"],Mapping):
+        if not isinstance(x,Mapping) or not {"id","tool","arguments"}.issubset(x) or set(x)-{"id","tool","arguments","depends_on"} or not isinstance(x["arguments"],Mapping):
             raise PlanRejected("invalid model-supplied step")
-        out.append(ToolStep(x["id"],x["tool"],transform(x["arguments"])))
+        out.append(ToolStep(x["id"], x["tool"], transform(x["arguments"]),\n                            tuple(x.get("depends_on", ()))))
     return IntelligencePlan(raw["id"],raw["version"],tuple(out))
 
 
@@ -184,7 +184,7 @@ def _plan_validation(plan:IntelligencePlan, permitted:set[str], max_steps:int):
             raise PlanRejected("invalid or secret-bearing step arguments")
         if "site_id" in s.arguments or "principal" in s.arguments:
             raise PlanRejected("step arguments cannot override the trusted scope")
-        if any(ref not in seen for ref in _references(s.arguments)):
+        if any(ref not in seen for ref in (*_references(s.arguments), *s.depends_on)):
             raise PlanRejected("a step may only depend on earlier successful steps")
         seen.add(s.id)
     for rule in plan.rules:
@@ -285,10 +285,10 @@ class EnergyIntelligence:
                     now=datetime.now(timezone.utc)
                     for src in sources:
                         ts=datetime.fromisoformat(src.observed_at.replace("Z","+00:00"))
-                        if ts.tzinfo is None or abs((now-ts).total_seconds())>self.max_input_age_seconds:
+                        age_seconds = (now - ts).total_seconds() if ts.tzinfo else float("inf")\n                        if age_seconds < -30 or age_seconds > self.max_input_age_seconds:
                             raise EvidenceError("stale or future energy reading")
                 evidence_id=f"{rid}:{s.id}"
-                parents=tuple(dict.fromkeys(f"{rid}:{dep}" for dep in _references(s.arguments)))
+                parents=tuple(dict.fromkeys(f"{rid}:{dep}" for dep in\n                     (*_references(s.arguments), *s.depends_on)))
                 record=EvidenceRecord(evidence_id,s.id,s.tool,_hash(safe_arguments),
                                       _hash(cleaned),sources,cleaned,_now(),parents)
                 values[s.id]=cleaned

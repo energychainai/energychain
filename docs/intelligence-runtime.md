@@ -38,18 +38,22 @@ print(format_console(report))
 
 ## Model-planned tasks
 
+**There is no default LLM provider.** The `sdk.intelligence()` runtime works entirely
+offline unless a developer explicitly injects a model. No provider is hosted by EnergyChain;
+no provider-specific API key is required by the SDK.
+
 Inject a model implementing `TextModel.generate(system, user, context)`. EnergyChain validates its JSON plan against an explicit read/analysis tool allowlist, strictly rejects actions and future references, then executes the approved SDK tools.
 
 ```python
 import os
 from energychain import ModelGateway
 
-groq = ModelGateway(
+model = ModelGateway(
     "openai-compatible", "openai/gpt-oss-20b",
     base_url="https://api.groq.com/openai/v1",
     api_key=os.environ["GROQ_API_KEY"],
 )
-engine = sdk.intelligence(model=groq)
+engine = sdk.intelligence(model=model)
 result = engine.run(
     task="Check the demo load",
     site_id="demo-site",
@@ -60,7 +64,15 @@ result = engine.run(
 )
 ```
 
-Groq is optional. Deterministic workflows require no model. AI-generated interpretation is labeled `generated_unverified`, and never alters numerical findings.
+The snippet explicitly selects Groq only as an example of an OpenAI-compatible provider. Developers can instead supply any `TextModel` adapter, including OpenAI, Anthropic, Gemini, Hugging Face, Ollama or a custom implementation. Groq is optional. Deterministic workflows require no model. AI-generated interpretation is labeled `generated_unverified`, and never alters numerical findings.
+
+## Developer snapshot
+
+Run `python examples/intelligence_developer_snapshot.py` from the source checkout
+to see three real workflows using synthetic sensor data: manual task submission,
+nested execution through `EnergyWorkflow`, and a trusted event trigger. Each uses
+the same `EnergyIntelligence` implementation. This example never requires an LLM
+or network credentials.
 
 ## Existing workflow integration
 

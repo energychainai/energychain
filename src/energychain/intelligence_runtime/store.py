@@ -70,7 +70,8 @@ class SQLiteIntelligenceStore:
                 raise RunConflict("run reservation is missing or already finished")
 
     def close(self):
-        with self._lock:self._db.close()
+        with self._lock:
+            self._db.close()
 
     def __enter__(self):return self
     def __exit__(self,*exc):self.close()

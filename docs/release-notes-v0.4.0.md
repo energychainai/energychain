@@ -19,6 +19,8 @@
 - Datetime task inputs and dependent tool values retain their types during invocation; evidence remains serialized and recognized secret fields stay redacted.
 - Freshness limits validate every returned reading, including readings beyond the 200-source provenance summary and cached results at replay time.
 - SQLite replay and JSON adapters preserve structural step IDs while continuing to redact credential fields inside tool payloads.
+- Request and plan fingerprints distinguish executable nested argument values before evidence redaction; only their hashes are retained as fingerprints.
+- Event replay keys include rule, principal, site and event identity. An optional stable rule `id` separates otherwise identical subscriptions.
 
 ## Developer examples
 

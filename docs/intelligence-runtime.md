@@ -119,6 +119,8 @@ store.close()
 
 The service principal comes from a **trusted host**, never the event payload. The current EnergyEventBus is best-effort, synchronous and in-process: for a managed service, use an authenticated durable queue, retries, dead-letter handling and operational alerts.
 
+Event replay keys include the rule, principal, site, category and source event ID. By default the rule identity is derived from its category, task and plan, so distinct rule definitions can share a store and duplicate deliveries replay across restarts. Supply a stable `id="battery-review-v1"` on `IntelligenceEventRule` to distinguish subscriptions with identical task/plan definitions but different input factories. The input factory must return stable task inputs for duplicate deliveries; changed inputs raise `RunConflict`.
+
 ## Evidence and outputs
 
 `IntelligenceResult` exposes `run_id`, `status`, `outputs`, `steps`, `evidence`, `findings`, and `interpretation_status`. Evidence entries contain actual serialized tool outputs, SHA-256 fingerprints, reading source/quality/timestamps, and `parent_evidence_ids` linking dependent computations. A `VerifiedFinding` is **only** a deterministic numerical comparison against the recorded output, not a verified diagnosis.
@@ -135,6 +137,7 @@ The service principal comes from a **trusted host**, never the event payload. Th
 - Freshness validation covers every returned reading before the provenance summary is capped at 200 sources per tool. Cached readings must still satisfy the configured freshness limit when replayed.
 - A SQLite run ledger supports completed-run replay; incomplete reservations fail closed, requiring operator reconciliation.
 - Completed runs bind the original request, typed inputs and principal site scope to the run ID. A retry reuses the persisted selected steps and result without another model call, then checks current tool permissions and blocked actions before exposing outputs. A changed request or site scope raises `RunConflict`.
+- Explicit-plan fingerprints hash the executable arguments before redaction, so different computations cannot share a cached result merely because nested field names resemble secret fields. Evidence and persisted payloads remain redacted; fingerprints retain only SHA-256 digests.
 - Datetime task inputs and dependent tool values retain their types for tool invocation. Evidence and model context use serialized, redacted copies.
 - Recognized secret-bearing keys in evidence are redacted, but developers must not send credentials in task inputs or prompts.
 - SHA-256 links demonstrate local data consistency; they do **not** certify hardware provenance, physical truth, or tamper-resistant external audit storage.

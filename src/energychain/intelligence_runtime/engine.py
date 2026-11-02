@@ -38,27 +38,27 @@ def _redact(name: str) -> bool:
     return any(marker in lower for marker in _FORBIDDEN_KEYS)
 
 
-def _clean(data: Any, *, depth: int = 0, serialize: bool = True) -> Any:
+def _clean(data: Any, *, depth: int = 0, serialize: bool = True, redact: bool = True) -> Any:
     """Redact and bound data; preserve typed leaves for tool invocation when requested."""
     if depth > 20:
         raise EvidenceError("output nesting exceeds evidence limit")
     if dataclasses.is_dataclass(data) and not isinstance(data, type):
         return _clean({f.name:getattr(data, f.name) for f in dataclasses.fields(data)},
-                      depth=depth+1, serialize=serialize)
+                      depth=depth+1, serialize=serialize, redact=redact)
     if isinstance(data, datetime):
         return data.isoformat() if serialize else data
     if isinstance(data, Enum):
-        return _clean(data.value, depth=depth+1) if serialize else data
+        return _clean(data.value, depth=depth+1, redact=redact) if serialize else data
     if isinstance(data, Mapping):
         if len(data)>2000:
             raise EvidenceError("output mapping too large")
-        return {str(k):"[REDACTED]" if _redact(str(k)) else
-                _clean(v,depth=depth+1,serialize=serialize)
+        return {str(k):"[REDACTED]" if redact and _redact(str(k)) else
+                _clean(v,depth=depth+1,serialize=serialize,redact=redact)
                 for k,v in data.items()}
     if isinstance(data,(tuple,list,set,frozenset)):
         if len(data)>4000:
             raise EvidenceError("output collection too large")
-        return [_clean(x,depth=depth+1,serialize=serialize) for x in
+        return [_clean(x,depth=depth+1,serialize=serialize,redact=redact) for x in
                 (sorted(data,key=str) if isinstance(data,(set,frozenset)) else data)]
     if isinstance(data,float) and not math.isfinite(data):
         raise EvidenceError("nonfinite output rejected")
@@ -69,30 +69,31 @@ def _clean(data: Any, *, depth: int = 0, serialize: bool = True) -> Any:
     raise EvidenceError("tool returned unsupported value type: "+type(data).__name__)
 
 
-def _value_types(data: Any) -> Any:
+def _value_types(data: Any, *, redact: bool = True) -> Any:
     """Distinguish typed references/datetimes from lookalike serialized literals."""
     if dataclasses.is_dataclass(data) and not isinstance(data, type):
         return {"dataclass": type(data).__module__ + "." + type(data).__qualname__,
                 "fields": _value_types({f.name: getattr(data, f.name)
-                                        for f in dataclasses.fields(data)})}
+                                        for f in dataclasses.fields(data)}, redact=redact)}
     if isinstance(data, Mapping):
-        return {"mapping": {str(k): "[REDACTED]" if _redact(str(k)) else _value_types(v)
+        return {"mapping": {str(k): "[REDACTED]" if redact and _redact(str(k)) else
+                            _value_types(v, redact=redact)
                             for k, v in data.items()}}
     if isinstance(data, (tuple, list, set, frozenset)):
         sequence = sorted(data, key=str) if isinstance(data, (set, frozenset)) else data
-        return {"sequence": [_value_types(v) for v in sequence]}
+        return {"sequence": [_value_types(v, redact=redact) for v in sequence]}
     return type(data).__module__ + "." + type(data).__qualname__
 
 
-def _blob(value: Any) -> bytes:
-    b=json.dumps(_clean(value),sort_keys=True,ensure_ascii=False,allow_nan=False,separators=(",", ":")).encode()
+def _blob(value: Any, *, redact: bool = True) -> bytes:
+    b=json.dumps(_clean(value,redact=redact),sort_keys=True,ensure_ascii=False,allow_nan=False,separators=(",", ":")).encode()
     if len(b)>_MAX_BYTES:
         raise EvidenceError("serialized evidence exceeds size cap")
     return b
 
 
-def _hash(value: Any) -> str:
-    return hashlib.sha256(_blob(value)).hexdigest()
+def _hash(value: Any, *, redact: bool = True) -> str:
+    return hashlib.sha256(_blob(value,redact=redact)).hexdigest()
 
 
 def _reading_sources(value: Any) -> tuple[SourceEvidence,...]:
@@ -308,11 +309,11 @@ class EnergyIntelligence:
         # the run id. A completed run can therefore replay while a provider is down.
         request_fingerprint=_hash({"task":task,"site":site_id,"principal":principal.id,
                                   "principal_sites":sorted(principal.allowed_sites),
-                                  "plan":_clean(selected),"plan_types":_value_types(selected),
+                                  "plan":selected,"plan_types":_value_types(selected,redact=False),
                                   "inputs":clean_inputs,"input_types":_value_types(task_inputs),
                                   "allowed_tools":sorted(permitted),"synthesize":synthesize,
                                   "max_steps":self.max_steps,
-                                  "max_input_age_seconds":self.max_input_age_seconds})
+                                  "max_input_age_seconds":self.max_input_age_seconds},redact=False)
         if self.store is not None:
             existing=self.store.replay(rid,principal.id,site_id,request_fingerprint)
             if existing is not None:
@@ -398,7 +399,7 @@ class EnergyIntelligence:
         result=IntelligenceResult(rid,task,"failed" if error and not values else
             "partial" if error else "completed",selected.id,selected.version,site_id,
             values,tuple(steps),tuple(evidence),tuple(findings),interpretation,
-            interp_status,error,_now(),_hash(selected),_hash(clean_inputs))
+            interp_status,error,_now(),_hash(selected,redact=False),_hash(clean_inputs))
         if self.store is not None:
             self.store.finish(result)
         return result

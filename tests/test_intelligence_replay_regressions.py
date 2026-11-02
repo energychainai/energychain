@@ -5,11 +5,12 @@ import json
 
 import pytest
 
-from energychain import EnergyChain, Permission
+from energychain import EnergyChain, EnergyEvent, Permission
 from energychain.exceptions import PermissionDenied
 from energychain.intelligence_runtime import (
     InputRef, IntelligencePlan, OutputRef, RunConflict, SQLiteIntelligenceStore, ToolStep,
     EvidenceError, as_dict, to_json,
+    IntelligenceEventRule, IntelligenceEventSubscription,
 )
 from energychain.tools import ToolSpec
 
@@ -270,3 +271,99 @@ def test_cached_readings_must_still_meet_the_current_freshness_limit(tmp_path, m
         Clock.current += timedelta(minutes=2)
         with pytest.raises(EvidenceError):
             engine.run(**request)
+
+
+def test_executable_nested_arguments_are_fingerprinted_before_redaction(tmp_path):
+    sdk = EnergyChain.demo()
+    principal = sdk.principal("operator", allowed_sites={"demo-site"})
+
+    def plan(count):
+        return IntelligencePlan("constraints", 1, (ToolStep("constraints", "check_energy_constraints", {
+            "values": {"token_count": count}, "limits": [{"key": "token_count", "upper": 10}],
+        }),))
+
+    with SQLiteIntelligenceStore(tmp_path / "runs.sqlite") as store:
+        engine = sdk.intelligence(store=store)
+        request = dict(task="Check constraints", principal=principal, site_id="demo-site",
+                       plan=plan(5), run_id="constraint-run")
+        initial = engine.run(**request)
+        assert initial.status == "completed" and initial.outputs["constraints"]["valid"]
+        with pytest.raises(RunConflict):
+            engine.run(**{**request, "plan": plan(50)})
+        fresh = engine.run(**{**request, "plan": plan(50), "run_id": "fresh-constraints"})
+        assert fresh.status == "completed" and not fresh.outputs["constraints"]["valid"]
+        assert fresh.plan_sha256 != initial.plan_sha256
+
+
+def test_independent_event_rules_each_run_and_deduplicate_across_restart(tmp_path):
+    sdk = EnergyChain.demo()
+    principal = sdk.principal("worker", allowed_sites={"demo-site"})
+    counts = []
+    sdk.tools.register(ToolSpec("event-read", "Count trusted event handling", Permission.READ,
+                                lambda *, site_id: counts.append(site_id) or {"value": 1}))
+    rules = [IntelligenceEventRule("battery.low", "Check " + name,
+                                  IntelligencePlan(name, 1, (ToolStep("read", "event-read"),)),
+                                  lambda event: {}) for name in ("backup", "demand")]
+    event = EnergyEvent("event-1", "demo-site", "battery.low", "Synthetic low battery")
+    results, errors = [], []
+    path = tmp_path / "events.sqlite"
+    for _ in range(2):
+        with SQLiteIntelligenceStore(path) as store:
+            subscriptions = [IntelligenceEventSubscription(
+                bus=sdk.events, engine=sdk.intelligence(store=store), rule=rule,
+                principal=principal, on_result=results.append, on_error=errors.append)
+                for rule in rules]
+            sdk.events.publish(event)
+            for subscription in subscriptions:
+                subscription.close()
+    assert not errors
+    assert len(results) == 4 and all(r.status == "completed" for r in results)
+    assert results[0] == results[2] and results[1] == results[3]
+    assert results[0].run_id != results[1].run_id
+    assert len(counts) == 2
+
+
+def test_explicit_event_rule_ids_separate_identical_plans_with_different_inputs(tmp_path):
+    sdk = EnergyChain.demo()
+    principal = sdk.principal("worker", allowed_sites={"demo-site"})
+    plan = IntelligencePlan("prefs", 1, (ToolStep("read", "get_preferences"),))
+    results, errors = [], []
+    with SQLiteIntelligenceStore(tmp_path / "events.sqlite") as store:
+        engine = sdk.intelligence(store=store)
+        subscriptions = []
+        for index in (1, 2):
+            rule = IntelligenceEventRule("battery.low", "Check preferences", plan,
+                                         lambda event, i=index: {"trigger": i},
+                                         id="preferences-rule-" + str(index))
+            subscriptions.append(IntelligenceEventSubscription(
+                bus=sdk.events, engine=engine, rule=rule, principal=principal,
+                on_result=results.append, on_error=errors.append))
+        event = EnergyEvent("event-1", "demo-site", "battery.low", "Synthetic low battery")
+        sdk.events.publish(event)
+        sdk.events.publish(event)
+        for subscription in subscriptions:
+            subscription.close()
+    assert not errors
+    assert len(results) == 4
+    assert results[0].run_id != results[1].run_id
+    assert results[0] == results[2] and results[1] == results[3]
+
+
+def test_event_identity_is_scoped_to_site(tmp_path):
+    from energychain.connectors import HybridSiteSimulator
+    sdk = EnergyChain.demo()
+    sdk.add_connector("other", HybridSiteSimulator(site_id="other-site"))
+    principal = sdk.principal("worker", allowed_sites={"demo-site", "other-site"})
+    plan = IntelligencePlan("prefs", 1, (ToolStep("read", "get_preferences"),))
+    rule = IntelligenceEventRule("battery.low", "Read preferences", plan, lambda event: {})
+    results, errors = [], []
+    with SQLiteIntelligenceStore(tmp_path / "events.sqlite") as store:
+        subscription = IntelligenceEventSubscription(
+            bus=sdk.events, engine=sdk.intelligence(store=store), rule=rule, principal=principal,
+            on_result=results.append, on_error=errors.append)
+        for site in ("demo-site", "other-site"):
+            sdk.events.publish(EnergyEvent("same-source-id", site, "battery.low", "Synthetic event"))
+        subscription.close()
+    assert not errors
+    assert len(results) == 2 and all(r.status == "completed" for r in results)
+    assert results[0].run_id != results[1].run_id

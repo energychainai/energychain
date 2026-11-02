@@ -34,7 +34,7 @@ report = sdk.intelligence().run(
 print(format_console(report))
 ```
 
-`OutputRef` refers to the actual prior SDK tool result, **not** a model-invented measurement. Every tool invocation is routed through the existing `ToolRegistry` and site-scoped `SafetyPolicy`.
+`ToolStep(..., depends_on=(\"battery\",))` can declare required upstream\nprovenance even when a registered tool independently reads an asset. It ensures the\nupstream check succeeded and records its evidence ID; it does not assert that a\nlater tool reused the exact same physical sample.\n\n`OutputRef` refers to the actual prior SDK tool result, **not** a model-invented measurement. Every tool invocation is routed through the existing `ToolRegistry` and site-scoped `SafetyPolicy`.
 
 ## Model-planned tasks
 

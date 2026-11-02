@@ -38,24 +38,28 @@ def _redact(name: str) -> bool:
     return any(marker in lower for marker in _FORBIDDEN_KEYS)
 
 
-def _clean(data: Any, *, depth: int = 0) -> Any:
+def _clean(data: Any, *, depth: int = 0, serialize: bool = True) -> Any:
+    """Redact and bound data; preserve typed leaves for tool invocation when requested."""
     if depth > 20:
         raise EvidenceError("output nesting exceeds evidence limit")
     if dataclasses.is_dataclass(data) and not isinstance(data, type):
-        return _clean({f.name:getattr(data, f.name) for f in dataclasses.fields(data)}, depth=depth+1)
+        return _clean({f.name:getattr(data, f.name) for f in dataclasses.fields(data)},
+                      depth=depth+1, serialize=serialize)
     if isinstance(data, datetime):
-        return data.isoformat()
+        return data.isoformat() if serialize else data
     if isinstance(data, Enum):
-        return _clean(data.value, depth=depth+1)
+        return _clean(data.value, depth=depth+1) if serialize else data
     if isinstance(data, Mapping):
         if len(data)>2000:
             raise EvidenceError("output mapping too large")
-        return {str(k):"[REDACTED]" if _redact(str(k)) else _clean(v,depth=depth+1)
+        return {str(k):"[REDACTED]" if _redact(str(k)) else
+                _clean(v,depth=depth+1,serialize=serialize)
                 for k,v in data.items()}
     if isinstance(data,(tuple,list,set,frozenset)):
         if len(data)>4000:
             raise EvidenceError("output collection too large")
-        return [_clean(x,depth=depth+1) for x in (sorted(data,key=str) if isinstance(data,(set,frozenset)) else data)]
+        return [_clean(x,depth=depth+1,serialize=serialize) for x in
+                (sorted(data,key=str) if isinstance(data,(set,frozenset)) else data)]
     if isinstance(data,float) and not math.isfinite(data):
         raise EvidenceError("nonfinite output rejected")
     if data is None or isinstance(data,(str,int,float,bool)):
@@ -63,6 +67,21 @@ def _clean(data: Any, *, depth: int = 0) -> Any:
             raise EvidenceError("output string too large")
         return data
     raise EvidenceError("tool returned unsupported value type: "+type(data).__name__)
+
+
+def _value_types(data: Any) -> Any:
+    """Distinguish typed references/datetimes from lookalike serialized literals."""
+    if dataclasses.is_dataclass(data) and not isinstance(data, type):
+        return {"dataclass": type(data).__module__ + "." + type(data).__qualname__,
+                "fields": _value_types({f.name: getattr(data, f.name)
+                                        for f in dataclasses.fields(data)})}
+    if isinstance(data, Mapping):
+        return {"mapping": {str(k): "[REDACTED]" if _redact(str(k)) else _value_types(v)
+                            for k, v in data.items()}}
+    if isinstance(data, (tuple, list, set, frozenset)):
+        sequence = sorted(data, key=str) if isinstance(data, (set, frozenset)) else data
+        return {"sequence": [_value_types(v) for v in sequence]}
+    return type(data).__module__ + "." + type(data).__qualname__
 
 
 def _blob(value: Any) -> bytes:
@@ -214,6 +233,20 @@ class EnergyIntelligence:
             choices.intersection_update(set(allowed_tools))
         return choices
 
+    def _authorize_replay(self, result, permitted, principal, site_id):
+        # Stored step records preserve every selected tool, including blocked steps.
+        # Replaying a result must not outlive current tool, site or action permissions.
+        if not 1 <= len(result.steps) <= self.max_steps:
+            raise PlanRejected("stored workflow exceeds the current step limit")
+        specs = {spec["name"]: spec for spec in self.sdk.tools.describe()}
+        for step in result.steps:
+            if step.tool not in permitted:
+                raise PlanRejected("stored workflow tool is not permitted: " + step.tool)
+            self.sdk.tools.policy.authorize(
+                principal, site_id, Permission(specs[step.tool]["permission"]),
+                action=step.tool, parameters=step.arguments)
+        return result
+
     def _propose(self,task, inputs, permitted):
         if self.model is None:
             raise PlanRejected("AI planning requires an injected TextModel")
@@ -243,31 +276,44 @@ class EnergyIntelligence:
             raise PlanRejected("task must have 1..4096 characters")
         if not isinstance(site_id,str) or not site_id or len(site_id)>128:
             raise PlanRejected("invalid site id")
-        clean_inputs=_clean(inputs if inputs is not None else {})
-        if not isinstance(clean_inputs,dict):
+        if inputs is not None and not isinstance(inputs, Mapping):
             raise PlanRejected("task inputs must be a mapping")
+        task_inputs=_clean(inputs if inputs is not None else {}, serialize=False)
+        clean_inputs=_clean(task_inputs)
         _blob(clean_inputs)
         permitted=self._permitted(allowed_tools)
         # Auth check happens before LLM planning and prevents cross-site input exposure.
         self.sdk.tools.policy.authorize(principal,site_id,Permission.READ)
-        if plan is None:
-            if allowed_tools is None:
-                raise PlanRejected("AI-planned tasks require explicit allowed_tools")
-            selected=self._propose(task,clean_inputs,permitted)
-        else:
-            selected=_parse_plan(plan)
-        _plan_validation(selected,permitted,self.max_steps)
-        rid=run_id or uuid4().hex
+        if plan is None and allowed_tools is None:
+            raise PlanRejected("AI-planned tasks require explicit allowed_tools")
+        selected=_parse_plan(plan) if plan is not None else None
+        if selected is not None:
+            _plan_validation(selected,permitted,self.max_steps)
+        rid=uuid4().hex if run_id is None else run_id
         if not isinstance(rid,str) or not 1<=len(rid)<=128 or any(ord(c)<32 for c in rid):
             raise PlanRejected("invalid run id")
-        plan_fingerprint=_hash({"task":task,"site":site_id,"principal":principal.id,
-                               "plan":_clean(selected),"inputs":clean_inputs,
-                               "allowed_tools":sorted(permitted),"synthesize":synthesize})
+        # The original request, rather than a nondeterministic model proposal, owns
+        # the run id. A completed run can therefore replay while a provider is down.
+        request_fingerprint=_hash({"task":task,"site":site_id,"principal":principal.id,
+                                  "principal_sites":sorted(principal.allowed_sites),
+                                  "plan":_clean(selected),"plan_types":_value_types(selected),
+                                  "inputs":clean_inputs,"input_types":_value_types(task_inputs),
+                                  "allowed_tools":sorted(permitted),"synthesize":synthesize,
+                                  "max_steps":self.max_steps,
+                                  "max_input_age_seconds":self.max_input_age_seconds})
         if self.store is not None:
-            existing=self.store.reserve(rid,principal.id,site_id,plan_fingerprint)
+            existing=self.store.replay(rid,principal.id,site_id,request_fingerprint)
             if existing is not None:
-                return existing
+                return self._authorize_replay(existing,permitted,principal,site_id)
+        if selected is None:
+            selected=self._propose(task,clean_inputs,permitted)
+            _plan_validation(selected,permitted,self.max_steps)
+        if self.store is not None:
+            existing=self.store.reserve(rid,principal.id,site_id,request_fingerprint)
+            if existing is not None:
+                return self._authorize_replay(existing,permitted,principal,site_id)
         values={}
+        typed_values={}
         steps=[]
         evidence=[]
         findings=[]
@@ -275,7 +321,7 @@ class EnergyIntelligence:
         for s in selected.steps:
             start=perf_counter()
             try:
-                arguments=_resolve(s.arguments,clean_inputs,values)
+                arguments=_resolve(s.arguments,task_inputs,typed_values)
                 safe_arguments=_clean(arguments)
                 _blob(safe_arguments)
                 result=self.sdk.tools.invoke(s.tool,principal,site_id,arguments=arguments)
@@ -295,6 +341,7 @@ class EnergyIntelligence:
                 record=EvidenceRecord(evidence_id,s.id,s.tool,_hash(safe_arguments),
                                       _hash(cleaned),sources,cleaned,_now(),parents)
                 values[s.id]=cleaned
+                typed_values[s.id]=_clean(result,serialize=False)
                 evidence.append(record)
                 steps.append(StepRecord(s.id,s.tool,"succeeded",evidence_id,
                                         round((perf_counter()-start)*1000,3),safe_arguments))

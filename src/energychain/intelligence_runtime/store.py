@@ -37,20 +37,36 @@ class SQLiteIntelligenceStore:
         self._db.commit()
         self._lock=RLock()
 
+    @staticmethod
+    def _completed(row, principal_id, site_id, fingerprint):
+        if row[:3] != (principal_id, site_id, fingerprint):
+            raise RunConflict("run id already bound to a different task or scope")
+        if row[3] != "finished":
+            raise RunConflict("run is incomplete; operator reconciliation required")
+        if row[4] is None:
+            raise RunConflict("stored result missing")
+        return _rehydrate(json.loads(row[4]))
+
+    def replay(self, run_id: str, principal_id: str, site_id: str, fingerprint: str):
+        """Read a matching completed request before invoking an optional model.
+
+        The result retains the selected tool steps for current-policy authorization.
+        This read does not reserve a run; reserve() still arbitrates concurrent starts.
+        """
+        with self._lock:
+            row = self._db.execute(
+                "SELECT principal_id,site_id,fingerprint,state,result "
+                "FROM intelligence_runs WHERE run_id=?", (run_id,)).fetchone()
+            return None if row is None else self._completed(
+                row, principal_id, site_id, fingerprint)
+
     def reserve(self,run_id:str,principal_id:str,site_id:str,fingerprint:str):
         with self._lock:
             self._db.execute("BEGIN IMMEDIATE")
             try:
                 row=self._db.execute("SELECT principal_id,site_id,fingerprint,state,result FROM intelligence_runs WHERE run_id=?",(run_id,)).fetchone()
                 if row:
-                    if row[:
-                        3]!=(principal_id,site_id,fingerprint):
-                        raise RunConflict("run id already bound to a different task or scope")
-                    if row[3]!="finished":
-                        raise RunConflict("run is incomplete; operator reconciliation required")
-                    if row[4] is None:
-                        raise RunConflict("stored result missing")
-                    result=_rehydrate(json.loads(row[4]))
+                    result=self._completed(row,principal_id,site_id,fingerprint)
                 else:
                     self._db.execute("INSERT INTO intelligence_runs(run_id,principal_id,site_id,fingerprint,state) VALUES(?,?,?,?,?)",
                                      (run_id,principal_id,site_id,fingerprint,"reserved"))

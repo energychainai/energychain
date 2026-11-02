@@ -133,10 +133,12 @@ The service principal comes from a **trusted host**, never the event payload. Th
 - Tool failures are recorded as errors, and downstream steps become `blocked`.
 - An optional freshness limit rejects stale/future observed readings.
 - A SQLite run ledger supports completed-run replay; incomplete reservations fail closed, requiring operator reconciliation.
+- Completed runs bind the original request, typed inputs and principal site scope to the run ID. A retry reuses the persisted selected steps and result without another model call, then checks current tool permissions and blocked actions before exposing outputs. A changed request or site scope raises `RunConflict`.
+- Datetime task inputs and dependent tool values retain their types for tool invocation. Evidence and model context use serialized, redacted copies.
 - Recognized secret-bearing keys in evidence are redacted, but developers must not send credentials in task inputs or prompts.
 - SHA-256 links demonstrate local data consistency; they do **not** certify hardware provenance, physical truth, or tamper-resistant external audit storage.
 - Hosted production requires external authentication/tenancy, encryption and retention, data governance, durable queueing, full operational telemetry and verified real-world integrations.
 
 ## Test and release gates
 
-Run `python -m pytest -q tests/test_intelligence_runtime_integration.py` plus the entire existing repository test suite. Check the end-to-end CLI example and a real Groq account separately before announcing model-provider compatibility or publishing a new package version. This feature is not automatically a certified physical control or high-availability cloud runtime.
+Run `python -m pytest -q tests/test_intelligence_runtime_integration.py` plus the entire existing repository test suite and the end-to-end CLI examples. Before claiming live compatibility with a particular provider and model, separately run the opt-in `scripts/verify_intelligence_provider.py` with explicitly selected configuration and credentials supplied privately through an environment variable. Offline examples and mock contract tests do not establish live account interoperability. The default SDK requires no model provider. This feature is not automatically a certified physical control or high-availability cloud runtime.

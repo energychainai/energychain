@@ -12,6 +12,12 @@
 - SQLite ledger for bounded local run replay, machine-readable JSON and CLI formatters.
 - No selected or default model provider; optional Groq or other vendor configuration is supplied by the developer.
 
+## Runtime release fixes
+
+- Completed-run replay rechecks current tool permissions and blocked actions before returning stored outputs, and binds the request to the principal's site scope.
+- Model-planned retries replay the persisted selected steps and result using the original request identity, without requiring another provider call.
+- Datetime task inputs and dependent tool values retain their types during invocation; evidence remains serialized and recognized secret fields stay redacted.
+
 ## Developer examples
 
 ```bash

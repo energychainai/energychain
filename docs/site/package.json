@@ -1,0 +1,11 @@
+{
+  "name": "energychain-docs-checks",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "test": "node check.cjs"
+  },
+  "devDependencies": {
+    "jsdom": "26.1.0"
+  }
+}

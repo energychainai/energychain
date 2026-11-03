@@ -14,7 +14,7 @@ Install the current release from the official PyPI index:
 python -m pip install --upgrade energychain
 ```
 
-To pin the EnergyIntelligence-enabled 0.4.0 alpha SDK after its verified PyPI release:
+To pin the current EnergyIntelligence-enabled 0.4.0 alpha SDK:
 
 ```bash
 python -m pip install energychain==0.4.0
@@ -27,6 +27,13 @@ python -m pip install -e .
 ```
 
 Requires Python 3.10 or newer. The core package uses **only Python standard-library runtime dependencies**.
+
+## Documentation versions
+
+Read the [v0.4.0 documentation](https://energychain.app/docs/0.4.0/) for the current SDK.
+Use the documentation version selector to match your installed package: v0.1.0,
+v0.2.0, v0.3.0 or v0.4.0. Earlier versions describe their own release capabilities;
+EnergyIntelligence is available from v0.4.0.
 
 ## EnergyIntelligence (v0.4)
 

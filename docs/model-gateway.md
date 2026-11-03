@@ -1,4 +1,8 @@
-# EnergyChain Model Gateway — v0.3.0
+# EnergyChain Model Gateway
+
+Introduced in v0.3.0 and included in the current v0.4.0 SDK. The examples below
+use v0.4.0. For an older installation, choose its release in the
+[documentation version selector](https://energychain.app/docs/0.4.0/).
 
 EnergyChain offers a consistent **synchronous TextModel-compatible** API for six provider families. It does not host models, provide API credentials or guarantee any named model is supported by the external service. The caller explicitly selects a provider and model.
 
@@ -14,7 +18,7 @@ EnergyChain offers a consistent **synchronous TextModel-compatible** API for six
 ## Installation
 
 ~~~bash
-python -m pip install 'energychain[models]==0.3.0'
+python -m pip install 'energychain[models]==0.4.0'
 export OPENAI_API_KEY='your-server-side-key'
 ~~~
 

@@ -1,11 +1,15 @@
-# EnergyChain Document Intelligence — v0.3.0
+# EnergyChain Document Intelligence
+
+Introduced in v0.3.0 and included in the current v0.4.0 SDK. The examples below
+use v0.4.0. For an older installation, choose its release in the
+[documentation version selector](https://energychain.app/docs/0.4.0/).
 
 EnergyChain accepts local **PDF, DOCX, TXT, Markdown, CSV and XLSX** files. It extracts text, headings, page/row/sheet provenance and explicitly stated energy quantities, then chunks and indexes content in a tenant-bound, site-scoped SQLite knowledge base.
 
 ## Installation
 
 ~~~bash
-python -m pip install 'energychain[documents]==0.3.0'
+python -m pip install 'energychain[documents]==0.4.0'
 ~~~
 
 The documents extra supplies pypdf, python-docx and openpyxl. TXT, Markdown, CSV, SQLite FTS5 keyword search and the default document index do not need other runtime dependencies.

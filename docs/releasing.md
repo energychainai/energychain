@@ -1,6 +1,6 @@
 # Publishing the `energychain` distribution
 
-For each new release, confirm official PyPI availability and smoke-test the distribution in a clean environment before announcing that version. The existing releases include v0.1.0, v0.2.0 and v0.3.0.
+For each new release, confirm official PyPI availability and smoke-test the distribution in a clean environment before announcing that version. The published releases are v0.1.0, v0.2.0, v0.3.0 and v0.4.0.
 
 ## Existing license and prior release
 
@@ -16,13 +16,17 @@ regardless of whether the development GitHub repository is public or private.
 
 ## Version policy
 
-The last independently verified published SDK before this change is v0.3.0. The next prepared SDK release is v0.4.0. The steps below apply to a future version and must be updated for that version.
+The current published SDK is [v0.4.0](https://pypi.org/project/energychain/0.4.0/), verified on November 3, 2026. The steps below apply to a future version and must use that version's tag and package metadata.
 Keep the `pyproject.toml` version, `energychain.__version__`, the new release tag and wheel/source metadata identical.
 Any subsequent functionality must land in a separately reviewed release.
 
+The [hosted v0.4.0 documentation](https://energychain.app/docs/0.4.0/) includes a
+version selector for v0.1.0 through v0.4.0. Keep historical documentation tied to
+its release and update the current documentation when a new SDK is published.
+
 ## Account setup (existing publisher; verify before release)
 
-After transferring this repository from `Atanseiye` to the `energychainai` organization, update the existing PyPI project's Trusted Publisher settings to match the new owner and repository before tagging another release. This account-level change is not accomplished by editing `publish.yml`. Do not trigger a new release while the old publisher trust is still configured.
+This repository was transferred from `Atanseiye` to the `energychainai` organization. The existing PyPI project's Trusted Publisher was verified for v0.4.0 with the organization identity below. Recheck it before subsequent releases; editing `publish.yml` does not change account-level trust.
 
 1. Confirm the currently published version at `https://pypi.org/pypi/energychain/json` and ensure the planned new version does not already exist. Never overwrite a published version.
 2. Sign in at https://pypi.org/manage/account/publishing/ and confirm the existing GitHub
@@ -86,6 +90,9 @@ checkout or `PYTHONPATH` from masking an incomplete wheel. CI does this on Pytho
 If upload succeeds but verification fails, inspect the verification error before
 retrying. PyPI release filenames cannot be overwritten. After a successful upload,
 rerun only the failed verification job rather than uploading the same files again.
+The package JSON and simple index can briefly update at different times. If an
+unpinned install still selects the previous release, confirm the new files and
+hashes appear on the official simple index, then retry verification.
 
 **PyPI distributions are public independently of GitHub visibility.** Published wheels/sdists and their source can generally be downloaded by anyone. Check redistributability before every release.
 
@@ -96,14 +103,17 @@ isolation tests. The core distribution must remain dependency-free; optional
 models and documents extras must be metadata-scoped. Only a non-prerelease GitHub
 Release from tested main may trigger the existing PyPI Trusted Publisher.
 
-## v0.4.0 pre-publication checklist
+## v0.4.0 release evidence
 
-Before creating the v0.4.0 tag, confirm the current project has an active
-Trusted Publisher for GitHub owner `energychainai`, repository `energychain`,
-workflow `publish.yml` and environment `pypi`. Previous release provenance
-used the former personal owner. This identity must match before publication.
+The [v0.4.0 release](https://github.com/energychainai/energychain/releases/tag/v0.4.0)
+points to commit `aae076771212173a10e6a173ee0ae57a45d457cd`.
+[Publish workflow 41641590110](https://github.com/energychainai/energychain/actions/runs/41641590110)
+completed its Python/OS test matrix, integration examples, package validation,
+installed-wheel smoke test, Trusted Publishing upload and official PyPI verification.
+The verification job succeeded after an initial simple-index propagation delay.
 
-Run CI on the exact release commit and require all Python versions, the
-model-independent integration test, event investigation example, and installed
-wheel test to succeed. After publishing, confirm PyPI file hashes and that an
-unpinned `pip install --upgrade energychain` gets v0.4.0.
+Both published files matched the tested artifacts' SHA-256 hashes. Their PyPI
+provenance identifies `energychainai/energychain`, workflow `publish.yml`,
+environment `pypi`, tag `v0.4.0` and the release commit above. A separate clean
+environment also upgraded from v0.3.0 to v0.4.0 using an unpinned installation
+from official PyPI.

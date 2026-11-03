@@ -22,7 +22,7 @@ This checklist is a publication gate, not evidence that every item has already b
 ## Developer onboarding
 
 - [ ] Merge CONTRIBUTING, security, governance, issue/PR templates and links from README.
-- [ ] Verify a clean `pip install energychain` and the pinned v0.3.0 examples; CI test builds independently.
+- [ ] Verify a clean `pip install energychain` and the current pinned v0.4.0 examples; CI test builds independently.
 - [ ] Confirm documentation links and current homepage/domain resolve before changing PyPI metadata.
 - [ ] Check that docs distinguish simulated data, read-only integrations and planned managed infrastructure from field-tested capabilities.
 - [ ] Run CI against the final release-readiness commit and inspect results.

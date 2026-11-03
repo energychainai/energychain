@@ -34,7 +34,44 @@ report = sdk.intelligence().run(
 print(format_console(report))
 ```
 
-`ToolStep(..., depends_on=(\"battery\",))` can declare required upstream\nprovenance even when a registered tool independently reads an asset. It ensures the\nupstream check succeeded and records its evidence ID; it does not assert that a\nlater tool reused the exact same physical sample.\n\n`OutputRef` refers to the actual prior SDK tool result, **not** a model-invented measurement. Every tool invocation is routed through the existing `ToolRegistry` and site-scoped `SafetyPolicy`.
+`ToolStep(..., depends_on=("battery",))` can declare required upstream
+provenance even when a registered tool independently reads an asset. It ensures the
+upstream check succeeded and records its evidence ID; it does not assert that a
+later tool reused the exact same physical sample.
+
+`OutputRef` refers to the actual prior SDK tool result, **not** a model-invented measurement. Every tool invocation is routed through the existing `ToolRegistry` and site-scoped `SafetyPolicy`.
+
+## Runtime configuration and replay
+
+`sdk.intelligence(model=None, store=None, max_steps=8,
+max_input_age_seconds=None)` constructs an engine. `max_steps` accepts 1 through
+12; the default is 8. Set `max_input_age_seconds` explicitly when observed
+readings must satisfy an application freshness limit. Freshness is not checked
+against a default age when this option is `None`.
+
+For persistent completed-run replay, supply a store and a stable `run_id`:
+
+```python
+from energychain.intelligence_runtime import SQLiteIntelligenceStore
+
+with SQLiteIntelligenceStore("intelligence-runs.sqlite3") as store:
+    engine = sdk.intelligence(store=store)
+    result = engine.run(
+        task="Review backup availability", plan=plan,
+        inputs={"reserve_pct": 20}, principal=principal,
+        site_id="demo-site", run_id="backup-review-001",
+    )
+```
+
+Repeat the same request with the same identity to replay its completed result.
+Changed inputs, task, plan or scope raise `RunConflict`. Stored steps are checked
+against current permissions before replay, and a configured freshness limit is
+applied again. A reserved but unfinished run fails closed and requires operator
+reconciliation; this store does not automatically resume an abandoned execution.
+
+`PlanRejected` reports an invalid or disallowed plan. `EvidenceError` reports
+invalid evidence or freshness. Inspect `result.status` and individual step
+statuses after execution: a failed dependency blocks its downstream steps.
 
 ## Model-planned tasks
 

@@ -4,6 +4,7 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 .venv/
+docs/site/node_modules/
 dist/
 build/
 .env

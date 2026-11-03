@@ -19,9 +19,9 @@ function writePage(version,slug,directory) {
   const release=data.versions[version],page=release.pages.find(p=>p.slug===slug);
   const title=page?.title||'Topic unavailable in this version';
   const banner=release.archived?`Archived documentation · v${version}`:`Latest published release · v${version} alpha`;
-  const body=page?`<p class="lede">${html(page.summary)}</p><div class="prose">${page.body}</div>`:
+  const body=page?`${page.summary?`<p class="lede">${html(page.summary)}</p>`:''}<div class="prose">${page.body}</div>`:
     `<div class="prose missing-topic"><p>This topic is not included in v${version}.</p><p><a href="/docs/${version}/overview/">Open the v${version} introduction</a></p><p><a href="/docs/${data.latest}/${slug}/">Read the latest version of this topic</a></p></div>`;
-  const article=`<article class="article" data-version="${version}" data-slug="${slug}"><div class="version-banner">${banner}</div><h1>${html(title)}</h1>${body}<div class="source-note">Source: <a href="https://github.com/energychainai/energychain/tree/${release.commit}">v${version} · ${release.commit.slice(0,7)}</a>. <a href="/docs/${version}/versions/">Documentation versions</a>.</div></article>`;
+  const article=`<article class="article" data-version="${version}" data-slug="${slug}"><div class="version-banner">${banner}</div><h1>${html(title)}</h1>${body}</article>`;
   let output=document.replace(/<main\b[^>]*>[\s\S]*?<\/main>/,`<main class="content" id="content">${article}</main>`)
     .replace(/<title>[\s\S]*?<\/title>/,`<title>${html(title)} — EnergyChain v${version} Docs</title>`)
     .replace(/<link[^>]+id="docs-canonical"[^>]*>/,`<link rel="canonical" id="docs-canonical" href="https://energychain.app/docs/${version}/${slug}/">`);

@@ -37,6 +37,12 @@ const tick = () => new Promise(resolve => setTimeout(resolve, 10));
       const ids = [...d.querySelectorAll("[id]")].map(x => x.id);
       assert.equal(ids.length,new Set(ids).size,`duplicate ID on ${version}/${page.slug}`);
       for (const link of d.querySelectorAll("#doc-nav a")) assert.ok(link.pathname.startsWith(`/docs/${version}/`));
+      if (release.archived) {
+        for (const code of d.querySelectorAll("main pre code")) {
+          assert.doesNotMatch(code.textContent, /python -m pip install (?:--upgrade )?energychain(?=\s|$)/,
+            `unpinned archived install on ${version}/${page.slug}`);
+        }
+      }
       rendered++;
     }
   }

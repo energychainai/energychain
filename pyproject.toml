@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "energychain"
-version = "0.3.0"
+version = "0.4.0"
 license = "MIT"
 license-files = ["LICENSE"]
 description = "Composable, safety-first Python framework for AI-native energy applications"
@@ -22,7 +22,7 @@ dev = ["pytest>=8", "build>=1", "twine>=5", "ruff>=0.6", "jsonschema>=4.23,<5",
        "pypdf>=5,<8", "python-docx>=1.2,<2", "openpyxl>=3.1,<4"]
 
 [project.urls]
-Homepage = "https://energychain-plum.vercel.app/"
+Homepage = "https://energychain.app/"
 Documentation = "https://energychain-plum.vercel.app/docs/"
 Source = "https://github.com/energychainai/energychain"
 Issues = "https://github.com/energychainai/energychain/issues"

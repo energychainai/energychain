@@ -58,3 +58,10 @@ class EnergyChain:
         """Model may select read/analysis tools only; no physical execution tools."""
         return BoundedEnergyAgent(self.tools, model, max_calls=max_calls,
                                   allowed_tools=allowed_tools)
+
+    def intelligence(self, *, model=None, store=None, max_steps: int = 8,
+                     max_input_age_seconds: float | None = None):
+        """Create a read/analysis intelligence runtime bound to this SDK instance."""
+        from .intelligence_runtime import EnergyIntelligence
+        return EnergyIntelligence(self, model=model, store=store, max_steps=max_steps,
+                                  max_input_age_seconds=max_input_age_seconds)

@@ -45,9 +45,26 @@ def smoke_test():
     assert not any("extra ==" not in r for r in (installed.requires or []))
     for name in energychain.__all__:
         assert hasattr(energychain, name), name
+    from energychain.intelligence_runtime import IntelligencePlan, ToolStep, InputRef, OutputRef
     chain = EnergyChain.demo()
     user = chain.principal("smoke", allowed_sites={"demo-site"})
     assert len(chain.tools.invoke("discover_assets", user, "demo-site")) == 4
+    assert chain.intelligence().model is None
+    report = chain.intelligence().run(
+        task="Check estimated backup availability",
+        principal=user, site_id="demo-site",
+        plan=IntelligencePlan("release-check", 1, (
+            ToolStep("load", "get_asset_state",
+                     {"asset_id": "demo-load", "metric": "power_w"}),
+            ToolStep("estimate", "estimate_battery_runtime", {
+                "battery_id": "demo-battery",
+                "load_w": OutputRef("load", ("value",)),
+                "reserve_pct": InputRef("reserve_pct"),
+            }),
+        )),
+        inputs={"reserve_pct": 20},
+    )
+    assert report.status == "completed" and len(report.evidence) == 2
     state = chain.tools.invoke("get_battery_state", user, "demo-site",
                                arguments={"asset_id": "demo-battery"})
     assert state["state_of_charge"].quality == "simulated"

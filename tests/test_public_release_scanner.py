@@ -29,3 +29,12 @@ def test_sensitive_file_names():
     assert unsafe_path("data/site.sqlite")
     assert not unsafe_path("examples/quickstart.py")
     assert unsafe_path(".env.example.sample.txt")
+
+
+def test_groq_key_signature_detected_without_printing_value():
+    from scripts.check_public_release import matches
+
+    sample = b"gsk_" + b"X" * 40
+    findings = matches(sample)
+    assert "Groq API key" in findings
+    assert sample.decode() not in repr(findings)

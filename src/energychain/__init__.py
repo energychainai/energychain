@@ -34,7 +34,9 @@ from .documents import (
     EnergyKnowledgeBase, DocumentLimits, DocumentError, DocumentLimitError,
     RetrievedPassage, KnowledgeAnswer, parse_document, chunk_document, energy_facts,
 )
-__version__ = "0.3.0"
+from .intelligence_runtime import EnergyIntelligence
+
+__version__ = "0.4.0"
 __all__ = ["EnergyChain", "AssetKind", "Capability", "Metric", "EnergySite", "EnergyAsset",
            "EnergyReading", "EnergyEvent", "EnergyPlan", "Tariff", "Permission", "Principal",
            "SafetyPolicy", "Approval", "RuntimeEstimate", "estimate_battery_runtime",
@@ -61,3 +63,5 @@ __all__ += ["ModelGateway", "ModelResult", "ModelTrace", "TokenUsage", "ModelErr
             "EnergyKnowledgeBase", "DocumentLimits", "DocumentError", "DocumentLimitError",
             "RetrievedPassage", "KnowledgeAnswer", "parse_document", "chunk_document",
             "energy_facts"]
+
+__all__ += ["EnergyIntelligence"]

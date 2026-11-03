@@ -224,6 +224,12 @@ def build_data() -> dict:
                         link["href"] = f"/docs/{version}/{match[1] or 'overview'}/" + (match[2] or "")
                 elif href.startswith(SOURCE + "/blob/main/"):
                     link["href"] = href.replace("/blob/main/", f"/blob/{commit}/")
+            if version != LATEST:
+                for code in fragment.select("pre code"):
+                    command = re.sub(
+                        r"python -m pip install (?:--upgrade )?energychain(?=\s|$)",
+                        f"python -m pip install energychain=={version}", code.get_text())
+                    code.string = command
             p["body"] = str(fragment)
             p["search"] = fragment.get_text(" ", strip=True)
         # Stable navigation order independent of source-file order.

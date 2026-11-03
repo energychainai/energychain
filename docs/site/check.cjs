@@ -32,7 +32,7 @@ const tick = () => new Promise(resolve => setTimeout(resolve, 10));
       go(`/docs/${version}/${page.slug}/`);
       assert.equal(d.querySelector("article h1").textContent,page.title);
       assert.equal(d.querySelector("article").dataset.version,version);
-      assert.match(d.querySelector(".source-note").textContent,new RegExp(release.commit.slice(0,7)));
+      assert.equal(d.querySelector(".source-note"),null);
       assert.equal(d.querySelectorAll('[aria-current="page"]').length,1);
       const ids = [...d.querySelectorAll("[id]")].map(x => x.id);
       assert.equal(ids.length,new Set(ids).size,`duplicate ID on ${version}/${page.slug}`);
@@ -87,6 +87,6 @@ const tick = () => new Promise(resolve => setTimeout(resolve, 10));
   assert.match(d.querySelector("h1").textContent,/version unavailable/i);
   assert.deepEqual(failures,[]);
   console.log(JSON.stringify({rendered_topics:rendered,versions:Object.keys(dataset.versions),
-    checks:["direct routes","source commits","pinned installs","scoped navigation and search","missing-version/topic states","version retention","legacy links","back/forward","clipboard","keyboard and mobile menu semantics","unique IDs","no runtime errors"],result:"passed"},null,2));
+    checks:["direct routes","page rendering","pinned installs","scoped navigation and search","missing-version/topic states","version retention","legacy links","back/forward","clipboard","keyboard and mobile menu semantics","unique IDs","no runtime errors"],result:"passed"},null,2));
   dom.window.close();
 })().catch(error => {console.error(error);dom.window.close();process.exitCode=1;});

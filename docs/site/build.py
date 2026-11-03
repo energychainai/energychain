@@ -130,7 +130,7 @@ def page(slug: str, title: str, group: str, summary: str, body: str) -> dict:
 
 
 def from_doc(version: str, commit: str, slug: str, title: str, group: str, path: str) -> dict:
-    return page(slug, title, group, f"Release-specific guidance for EnergyChain v{version}.",
+    return page(slug, title, group, "",
                 render_md(read_doc(version, path), version, commit))
 
 

@@ -19,11 +19,7 @@ it. A topic introduced later displays an availability notice instead of showing
 newer APIs under an older version. Search covers only the selected version.
 Unversioned `/docs/` links open the current release; versioned links remain pinned.
 
-Archived pages describe the corresponding tagged source. Their installation
-commands are pinned to that release, and source links identify its exact commit.
-The v0.3.0 README's mistaken v0.2.0 installation pin is corrected in the rendered
-archive. Historical development and publication statements are retained only in
-their historical context, rather than asserted as current project status.
+Installation commands on archived pages are pinned to the selected release.
 
 Every release is an MIT-licensed, Python 3.10+ alpha with physical dispatch
 disabled by default. Selecting an older version is not a recommendation to use

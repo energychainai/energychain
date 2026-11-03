@@ -40,13 +40,13 @@
     const item = pages.find(p => p.slug === slug);
     const title = item ? item.title : "Topic unavailable in this version";
     let body;
-    if (item) body = `<p class="lede">${html(item.summary)}</p><div class="prose">${item.body}</div>`;
+    if (item) body = `${item.summary ? `<p class="lede">${html(item.summary)}</p>` : ""}<div class="prose">${item.body}</div>`;
     else {
       const available = Object.entries(data.versions).filter(([,r]) => r.pages.some(p => p.slug === slug));
       body = `<div class="prose missing-topic" role="status"><p>This topic is not included in v${html(version)}. No newer-version content is shown here.</p>${available.length ? `<p>Read this topic in: ${available.map(([v]) => `<a href="${path(v,slug)}">v${html(v)}</a>`).join(", ")}.</p>` : ""}<p><a href="${path(version,"overview")}">Open the v${html(version)} introduction →</a></p></div>`;
     }
     const archive = release.archived ? `<div class="version-banner"><strong>Archived documentation · v${html(version)}</strong>. Examples and API references match this release. <a href="${path(data.latest,slug)}">Read latest v${data.latest}</a>.</div>` : `<div class="version-banner">Latest published release · <strong>v${html(version)} alpha</strong> · Python 3.10+ · <a href="https://pypi.org/project/energychain/${version}/">PyPI release</a></div>`;
-    main.innerHTML = `<article class="article" tabindex="-1" data-version="${version}" data-slug="${html(slug)}"><div class="breadcrumbs"><a href="${path(version,"overview")}">Docs</a><span>/</span><span>v${version}</span><span>/</span><span>${html(item?.group || "Version availability")}</span></div>${archive}<h1>${html(title)}</h1>${body}<div class="source-note">Source: <a href="https://github.com/energychainai/energychain/tree/${release.commit}">v${version} · ${release.commit.slice(0,7)}</a>. Release-specific examples and APIs; installation pins and navigation receive documentation corrections. <a href="${path(version,"versions")}">About versions</a>.</div></article>`;
+    main.innerHTML = `<article class="article" tabindex="-1" data-version="${version}" data-slug="${html(slug)}"><div class="breadcrumbs"><a href="${path(version,"overview")}">Docs</a><span>/</span><span>v${version}</span><span>/</span><span>${html(item?.group || "Version availability")}</span></div>${archive}<h1>${html(title)}</h1>${body}</article>`;
     document.title = `${title} — EnergyChain v${version} Docs`;
     document.getElementById("docs-canonical").href = `https://energychain.app${path(version,slug)}`;
     for (const link of document.querySelectorAll(".topnav a[href^='/docs/']")) link.href = path(version,"quickstart");

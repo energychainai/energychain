@@ -183,14 +183,18 @@ def build_data() -> dict:
             pages.append(page("examples", "Developer examples", "Guides", "Examples from this exact release.", render_md(examples, version, commit)))
         # Full source guides replace hand-maintained summaries for these APIs.
         if version in {"0.3.0", LATEST}:
-            for slug, title, path in [
+            guide_specs = [
                 ("model-gateway", "Model Gateway", "docs/model-gateway.md"),
                 ("document-intelligence", "Document Intelligence", "docs/document-intelligence.md"),
                 ("product-architecture", "Product architecture", "docs/product-architecture-v01.md"),
                 ("safety-actions", "Safety and authorization", "docs/security.md"),
-            ]:
+            ]
+            if version == LATEST:
+                guide_specs.append(("architecture", "System architecture", "docs/architecture.md"))
+            for slug, title, path in guide_specs:
                 pages = [p for p in pages if p["slug"] != slug]
-                pages.append(from_doc(version, commit, slug, title, "Intelligence", path))
+                group = "Core concepts" if slug in {"architecture", "product-architecture"} else "Operations" if slug == "safety-actions" else "Intelligence"
+                pages.append(from_doc(version, commit, slug, title, group, path))
             if version == LATEST:
                 pages.append(from_doc(version, commit, "intelligence-runtime", "EnergyIntelligence", "Intelligence", "docs/intelligence-runtime.md"))
                 pages.append(from_doc(version, commit, "upgrading", "Upgrade and migration", "Releases", "docs/upgrading.md"))

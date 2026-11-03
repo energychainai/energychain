@@ -1,10 +1,10 @@
-# EnergyChain v0.1 Threat Model and Operational Safety
+# EnergyChain v0.4.0 Threat Model and Operational Safety
 
 ## Critical distinction: library versus operating system
 
 EnergyChain is a **developer SDK**, not a remotely hosted authorization or device-control platform. Importing this package into a third-party application cannot guarantee tenant isolation, production identity management, safe energy dispatch, or cybersecurity of the host environment. Vendor-neutral energy data is **untrusted input** even when delivered over HTTPS.
 
-## Threat boundaries and v0.1 mitigations
+## Threat boundaries and current mitigations
 
 | Trust boundary | Threat | Current mitigation | Missing production safeguard |
 |---|---|---|---|
@@ -16,6 +16,10 @@ EnergyChain is a **developer SDK**, not a remotely hosted authorization or devic
 | Memory -> model | Historical observations mistaken for current readings | Time-aware records, provenance, context windows | Data retention policy, provenance validation, privacy review, selective deletion across external systems |
 | Network -> HA/weather | SSRF, redirect, secret leakage | HTTPS origin validation, fixed routes, redirect refusal, response size limits, no token logging | Egress allowlists, DNS pinning, cert monitoring, vault-managed credentials |
 | Workflow -> execution | Retry duplicates action | Checkpointed workflow restricted to READ/ANALYZE | Durable idempotency keys with transactional action outbox |
+| Document -> parser/index | Malicious archives, excessive resource use, cross-tenant retrieval | Bounded parsing, guarded Office archives, allowed root and tenant/site checks | Isolated workers, OS resource limits, storage encryption and retention governance |
+| Model -> intelligence plan | Fabricated tools, future references or privileged action proposals | Typed finite plans, explicit tool allowlists, per-step authorization and READ/ANALYZE restriction | Host quotas, provider validation, adversarial application testing |
+| Intelligence ledger -> replay | Stale results or revoked permissions exposed by retries | Request/scope binding, current authorization recheck, configured freshness recheck; incomplete reservations fail closed | Operator reconciliation, protected durable storage, distributed concurrency and recovery design |
+| Event -> intelligence task | Event payload impersonates a trusted identity or delivery is lost | Host-owned principal, rule/event replay identity, required store and error callback | Authenticated durable transport, retry policy, dead-letter handling and operations alerts |
 
 ## Default safety policy
 
@@ -43,3 +47,17 @@ Document storage is tenant-bound and permission-checked, but the application
 must authenticate users, encrypt storage/backups and isolate untrusted document
 parsers in resource-constrained workers. Retrieved evidence and citations do not
 certify equipment parameters or generated claims.
+
+## v0.4 intelligence evidence boundaries
+
+Only the trusted host may choose a principal and site. `InputRef`, `OutputRef`
+and `depends_on` bind earlier tool results or provenance; they do not grant
+privileges or prove that independent tools read the same physical sample.
+`VerifiedFinding` means a deterministic comparison against a recorded SDK output,
+not an independently verified equipment diagnosis. Generated interpretation is
+marked `generated_unverified`.
+
+The runtime redacts recognized secret-bearing fields, but callers must keep
+credentials out of prompts, task inputs and documents. Fingerprints establish
+local consistency; they do not provide hardware attestation, cryptographic
+signatures on measurements or a tamper-resistant external audit service.

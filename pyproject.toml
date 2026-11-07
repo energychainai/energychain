@@ -7,11 +7,11 @@ name = "energychain"
 version = "0.4.0"
 license = "MIT"
 license-files = ["LICENSE"]
-description = "Composable, safety-first Python framework for AI-native energy applications"
+description = "Open-source energy AI infrastructure for evidence-backed tools and workflows"
 readme = "README.md"
 requires-python = ">=3.10"
 authors = [{name = "EnergyChain Contributors"}]
-keywords = ["energy", "solar", "battery", "AI", "agents", "energychain", "SDK"]
+keywords = ["energy AI", "energy infrastructure", "solar", "battery", "mini-grid", "agents", "workflows", "energychain", "SDK"]
 classifiers = ["Development Status :: 3 - Alpha", "Intended Audience :: Developers", "Programming Language :: Python :: 3", "Programming Language :: Python :: 3.10", "Programming Language :: Python :: 3.11", "Programming Language :: Python :: 3.12", "Programming Language :: Python :: 3.13", "Topic :: Scientific/Engineering", "Topic :: Software Development :: Libraries :: Python Modules"]
 
 [project.optional-dependencies]
@@ -23,6 +23,7 @@ dev = ["pytest>=8", "build>=1", "twine>=5", "ruff>=0.6", "jsonschema>=4.23,<5",
 
 [project.urls]
 Homepage = "https://energychain.app/"
+Company = "https://energychain.app/company/"
 Documentation = "https://energychain.app/docs/"
 Source = "https://github.com/energychainai/energychain"
 Issues = "https://github.com/energychainai/energychain/issues"

@@ -1,162 +1,126 @@
 # EnergyChain
 
-**EnergyChain is the developer infrastructure through which AI applications can understand, interact with, and safely optimize energy systems—from solar installations and batteries to mini-grids, utilities, and electricity networks.**
+**Developer infrastructure for energy AI.**
 
-> Status: **v0.4.0 alpha**. Offline-first, Python-first, and read-only by default. Simulated energy data are **not live device measurements**.
+EnergyChain is an energy AI infrastructure company building the software foundation for applications that understand, analyze, and help optimize distributed energy systems — including solar, batteries, hybrid power, and mini-grids.
 
-EnergyChain brings composable, vendor-neutral energy data types, connectors, safe callable tools, storage, deterministic energy calculations, a pluggable agent interface, and in-process workflows to Python developers. EnergyChain is a **separate project** from Energy Data Network (EDN).
+**This repository contains the open-source EnergyChain SDK**, the foundation developers can use to build energy-aware applications with reusable energy data models, connectors, permission-scoped tools, context, model integrations and evidence-backed workflows. Build useful intelligence without rebuilding the same energy-specific infrastructure for every application.
 
-## Installation
+[Company website](https://energychain.app/) · [Documentation](https://energychain.app/docs/) · [PyPI package](https://pypi.org/project/energychain/) · [Examples](examples/) · [Issues](https://github.com/energychainai/energychain/issues)
 
-Install the current release from the official PyPI index:
+## What developers can build
+
+- **Energy asset intelligence:** connect and normalize readings, analyze conditions, and produce evidence-backed findings.
+- **Battery and hybrid-power applications:** estimate runtime, calculate tariffs, review PV and energy balance, and investigate events.
+- **Energy-aware AI agents:** give developer-selected models permission-scoped energy tools with explicit authorization boundaries.
+- **Repeatable intelligence workflows:** compose dependent tool steps, reference real outputs, evaluate deterministic evidence rules and replay results.
+- **Document-powered energy applications:** work with source-linked PDF, spreadsheet and report context.
+- **Multi-site intelligence:** build on scoped memories, fleet models, local events and reusable analysis patterns.
+
+The SDK supplies building blocks; developers retain control of their application's frontend, data sources, model providers and deployment.
+
+## Install and run
+
+Requires Python 3.10+.
 
 ```bash
 python -m pip install --upgrade energychain
 ```
 
-To pin the current EnergyIntelligence-enabled 0.4.0 alpha SDK:
+The current documented SDK release is **v0.4.0 alpha**:
 
 ```bash
 python -m pip install energychain==0.4.0
 ```
 
-For development, install the repository checkout locally:
-
-```bash
-python -m pip install -e .
-```
-
-Requires Python 3.10 or newer. The core package uses **only Python standard-library runtime dependencies**.
-
-## Documentation versions
-
-Read the [v0.4.0 documentation](https://energychain.app/docs/0.4.0/) for the current SDK.
-Use the documentation version selector to match your installed package: v0.1.0,
-v0.2.0, v0.3.0 or v0.4.0. Earlier versions describe their own release capabilities;
-EnergyIntelligence is available from v0.4.0.
-
-## EnergyIntelligence (v0.4)
-
-EnergyChain adds a **model-independent, evidence-backed intelligence workflow runtime**
-for developers. Use `chain.intelligence().run(...)` with typed manual inputs, register
-`energy_intelligence` inside an existing `EnergyWorkflow`, or subscribe through
-`IntelligenceEventSubscription` to trusted `EnergyEventBus` events.
-
-- Real READ/ANALYZE tools, validated dependency references, and site-scoped authorization.
-- Provenance, source-quality and SHA-256 fingerprints linked to actual tool results.
-- Deterministic evidence rules, blocked-step status and SQLite run deduplication.
-- Optional injected `TextModel` for bounded AI planning or unverified interpretation.
-- **No default LLM; Groq, OpenAI, Ollama and other model adapters remain opt-in.**
-
-```bash
-python examples/intelligence_workflow.py
-python examples/intelligence_incident_event.py
-```
-
-Start with [the EnergyIntelligence developer guide](docs/intelligence-runtime.md).
-This is an in-process SDK, not a distributed monitoring service or an energy-device controller.
-
-## Model Gateway and Document Intelligence (v0.3)
-
-EnergyChain now offers explicit provider adapters for OpenAI, Anthropic, Gemini,
-Hugging Face Inference Providers, local Ollama, and HTTPS OpenAI-compatible endpoints.
-The developer supplies credentials and selects an available model; no inference
-is hosted. JSON Schema results are validated locally with the models extra.
-
-A tenant-bound Document Intelligence index accepts PDF, DOCX, TXT, Markdown, CSV
-and XLSX files, retaining source fingerprints, page/sheet/section provenance,
-and explicit energy quantities. The SQLite search index enforces site permissions
-and supports optional developer-supplied embeddings.
-
-~~~bash
-python -m pip install 'energychain[models]==0.4.0'
-python -m pip install 'energychain[documents]==0.4.0'
-python -m pip install 'energychain[all]==0.4.0'
-~~~
-
-See [Model Gateway](docs/model-gateway.md) and
-[Document Intelligence](docs/document-intelligence.md) for APIs, examples and
-production security obligations. Offline mock tests do not certify every live
-vendor model. Parse untrusted files in an isolated, resource-constrained worker;
-document instructions never grant energy device control permissions.
-
-## Quickstart
-
 ```python
 from energychain import EnergyChain
 
 chain = EnergyChain.demo()
-user = chain.principal("developer", allowed_sites={"demo-site"})
+developer = chain.principal("developer", allowed_sites={"demo-site"})
 
-assets = chain.tools.invoke("discover_assets", user, "demo-site")
-print([a.name for a in assets])
+assets = chain.tools.invoke("discover_assets", developer, "demo-site")
+print([asset.name for asset in assets])
 
 result = chain.tools.invoke(
-    "estimate_battery_runtime", user, "demo-site",
+    "estimate_battery_runtime",
+    developer,
+    "demo-site",
     arguments={"battery_id": "demo-battery", "load_w": 900, "reserve_pct": 20},
 )
 print(result)
 ```
 
-**Security:** `principal()` is a **local-demo convenience**, not a production authentication mechanism. Production applications must authenticate principals, assign site-level permissions from a trusted service, and enforce authorization at API boundaries. The included connector simulator never sends live control commands.
+`EnergyChain.demo()` supplies simulated data for getting started. Applications can use explicitly configured authorized sources and connectors when ready.
 
-## Real-world integrations and safety
+**Next step:** [Follow the v0.4.0 developer guide](https://energychain.app/docs/0.4.0/) or [run an intelligence workflow](examples/intelligence_workflow.py).
 
-New opt-in provider integrations include a **read-only Home Assistant REST connector** (mapped energy sensors, explicit units and bearer authentication) and an **Open-Meteo irradiance forecast source**. Both require legal use of the provider service and a trustworthy source configuration. No vendor integration has yet been field-validated by EnergyChain.
+## EnergyChain SDK v0.4.0
 
-The framework provides site-scoped **fleets**, structured **episodic memory**, a **bounded read/analysis-only planning agent**, constrained **advisory energy scheduling**, signed one-time action approvals, and opt-in **checkpointed read-only workflows**. Physical device dispatch is **disabled by default**. These extensions are libraries and reference implementations, not a production-operated cloud backend.
+| Component | Developer value |
+| --- | --- |
+| Typed energy models | Consistent site, asset, reading, event, tariff and unit semantics |
+| Data connectors | CSV, simulator, read-only Home Assistant mapping and opt-in irradiance forecast |
+| Permission-scoped tools | Asset queries, battery runtime, energy costs, PV and energy-balance calculations, baselines |
+| Energy memory and context | Scoped observations, event history, episodic context and SQLite persistence |
+| Model Gateway | Explicit, developer-selected model adapters, including OpenAI, Anthropic, Gemini, Hugging Face, Ollama and compatible HTTPS endpoints |
+| Document Intelligence | Site-scoped, source-linked search for PDF, DOCX, text, Markdown, CSV and XLSX |
+| EnergyIntelligence | Real tool-output dependencies, typed plans, deterministic findings, provenance and replay |
+| Workflows and events | In-process workflow steps, local checkpoints and trusted event subscriptions |
+| Tracing and evaluation | Execution traces, latency and baseline forecast metrics |
 
-- [Full 15-module architecture and readiness gates](docs/product-architecture-v01.md)
-- [Threat model and authorization boundaries](docs/security.md)
-- [Read a Home Assistant energy sensor](examples/home_assistant_readonly.py)
-- [Fleet and episodic memory demo](examples/energy_fleet_and_memory.py)
+### EnergyIntelligence
 
-## Expanded components in 0.2
+Introduced in **v0.4.0**, EnergyIntelligence runs evidence-backed analysis through `chain.intelligence().run(...)`. You can also register `energy_intelligence` as a workflow tool or subscribe through `IntelligenceEventSubscription`. Findings are linked to actual SDK tool outputs and source records.
 
-| Component | Implementation |
-|---|---|
-| Energy models | Site, asset, metric, reading, event, tariff, energy plan |
-| Connectors | Abstract connector, registry, simulator, CSV import, read-only Home Assistant; opt-in weather forecast |
-| Memory | In-process bounded memory, SQLite persistence, episodic records and context retrieval |
-| Energy tools | 18 registered tools covering readings, consumption, forecast baselines, anomaly flags, constraints, fleet snapshots, PV and energy balance |
-| Safety | Site authorization, declared action boundaries, one-time signed approvals, execution disabled by default |
-| Intelligence | Battery-runtime estimate, tariff cost, baseline mean forecast, outlier baseline |
-| Agent | Explicit tool selection, optional injected model, bounded read/analysis planning interface |
-| Workflow | In-process sequential tools and SQLite checkpointed read/analysis runs |
-| Observability | Bounded trace and latency; model-independent forecast metrics and chronological baseline backtest |
-| Developer experience | PyPI-ready packaging, examples, tests, CI and trusted-publisher release workflow |
+- [EnergyIntelligence runtime guide](docs/intelligence-runtime.md)
+- [Model Gateway](docs/model-gateway.md)
+- [Document Intelligence](docs/document-intelligence.md)
+- [Architecture](docs/architecture.md)
+- [Versioned documentation](docs/versions.md)
+- [Runnable examples](examples/)
 
-## Intentionally not included in 0.2
+The core SDK works without a model subscription. **There is no default LLM provider.** Applications opt into a model and supply credentials when needed.
 
-- Field-tested and authenticated integrations with specific solar/battery vendors (no verified live credentials, calibration or deployment yet)
-- A production-ready control or dispatch runtime, remote device command implementation, or energy safety certification
-- Unbounded/autonomous LLM tool loops, multi-agent coordination, durable multi-instance streaming and production-safe physical action retries
-- Production-grade multi-tenant identity, authorization server, encryption/key management, or high-volume telemetry infrastructure
-- Trained and field-validated forecasting models, high-confidence anomaly accuracy, hardware testing or independently measured energy savings
-- Managed EnergyChain Cloud, hosted APIs, TypeScript SDK, vector-search services or MCP adapter
+```bash
+python -m pip install 'energychain[models]==0.4.0'
+python -m pip install 'energychain[documents]==0.4.0'
+python -m pip install 'energychain[all]==0.4.0'
+```
 
-These are subsequent product-development efforts, not features to advertise as shipped.
+## The EnergyChain product ecosystem
 
-## Connect existing CSV exports
+**EnergyChain is the company. EnergyChain SDK is one product.** The SDK is the currently released foundation for the broader infrastructure ecosystem.
 
-Provide `asset_id,metric,value,timestamp,source` columns and register an explicit `EnergySite` and its `EnergyAsset` definitions. See `CSVConnector.from_csv(path, site=..., assets=...)`. The latest row is treated as the last *recorded* value (not necessarily live); caller must check freshness before operational decisions.
+| Product | Purpose | Current status |
+| --- | --- | --- |
+| **EnergyChain SDK** | Open-source energy data, tools and intelligence building blocks | **Available:** v0.4.0 alpha |
+| **EnGraph** | Stateful orchestration for more complex energy AI workflows | **Planned product** |
+| **EnSmith** | Centralized tracing, evaluation, debugging and monitoring | **Planned product** |
+| **EnergyChain Cloud** | Managed execution, infrastructure and operational services | **Planned service** |
 
-## Design principles
+The SDK already includes local workflows and tracing; the proposed products would add capabilities beyond those existing primitives.
 
-1. **Developer-first:** EnergyChain is software infrastructure for developers, not a national-grid control product.
-2. **Standard energy semantics:** W, Wh, %, UTC-offset-aware timestamps, data-source and quality fields.
-3. **Composable:** Connectors, tools, memory and language models can be independently replaced.
-4. **Data is not authority:** An LLM response cannot issue a physical command. Tools always check policies.
-5. **Provenance matters:** Simulated, estimated and measured values are explicitly labelled.
-6. **Tests and evidence:** Do not confuse synthetic demonstrations with field validation.
+**Building energy software for an organization?** Visit [energychain.app](https://energychain.app/) to explore a pilot, integration or potential design partnership.
 
-## Open source and contributing
+## Why EnergyChain?
 
-EnergyChain is an MIT-licensed open-source project. Read [CONTRIBUTING.md](CONTRIBUTING.md) for setup, code review and contribution guidelines; [AUTHORS.md](AUTHORS.md) for attribution; [GOVERNANCE.md](GOVERNANCE.md) for project decision-making; and [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) for community expectations.
+1. **Energy-aware data models:** power, energy, source quality, site access and timestamps have explicit meanings.
+2. **Reusable integrations:** developers can combine data sources without tying every workflow to a single vendor schema.
+3. **Evidence-backed intelligence:** workflows use real tool outputs and traceable source context.
+4. **Explicit permissions:** model suggestions do not grant application privileges.
+5. **Model-agnostic development:** AI providers are optional and developer-selected.
+6. **Composable infrastructure:** adopt only the capabilities a product needs.
 
-Use [GitHub issues](https://github.com/energychainai/energychain/issues) for **non-sensitive** bug reports and feature requests. See [SUPPORT.md](SUPPORT.md) for help and [SECURITY.md](SECURITY.md) for private vulnerability reporting. Never include real utility/customer data, meter credentials, or operational endpoints in public reports.
+Detailed integration responsibilities and operational requirements live in the [technical architecture](docs/product-architecture-v01.md) and [security documentation](docs/security.md).
 
-**Before switching a private repository to public**, the maintainer must complete the [open-source launch checklist](docs/open-source-launch-checklist.md), including a full history and credential review. Publishing on PyPI already exposes release source archives; repository visibility is independent.
+## Open source
+
+The SDK is [MIT licensed](LICENSE). We welcome issues, contributions and discussions about energy data, applications and integrations.
+
+[Contributing](CONTRIBUTING.md) · [Governance](GOVERNANCE.md) · [Security reporting](SECURITY.md) · [Support](SUPPORT.md) · [Code of conduct](CODE_OF_CONDUCT.md)
+
+EnergyChain is an independent venture, separate from Energy Data Network (EDN). See [Governance](GOVERNANCE.md) for project stewardship.
 
 ## Local development
 
@@ -168,13 +132,4 @@ python -m twine check dist/*
 python examples/quickstart.py
 ```
 
-See [architecture](docs/architecture.md) for contract boundaries and limitations and [release guide](docs/releasing.md) for verified distribution steps.
-
-## Licensing and safety
-
-EnergyChain is MIT licensed; see [LICENSE](LICENSE). PyPI wheels and source archives are publicly downloadable independently of GitHub repository visibility. This alpha-quality SDK is not certified for physical energy-equipment control.
-
-
-## Operational deployment boundary
-
-The package supports **read-only integrations and advisory application development**; it does **not** ship an authenticated multi-tenant backend, durable broker, high-availability workflow workers or certified device controls. A developer can deploy an application that imports it, but responsibility for tenancy, secrets, privacy, monitoring and operational availability belongs to that application until EnergyChain Cloud exists. See `docs/security.md` for release gates.
+Learn more about the company at [energychain.app](https://energychain.app/) and develop with the [SDK docs](https://energychain.app/docs/).

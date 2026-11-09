@@ -75,6 +75,7 @@ Introduced in **v0.4.0**, EnergyIntelligence runs evidence-backed analysis throu
 
 - [EnergyIntelligence runtime guide](docs/intelligence-runtime.md)
 - [Model Gateway](docs/model-gateway.md)
+- [Experimental EnSmith local tracing](docs/ensmith-instrumentation.md)
 - [Document Intelligence](docs/document-intelligence.md)
 - [Architecture](docs/architecture.md)
 - [Versioned documentation](docs/versions.md)

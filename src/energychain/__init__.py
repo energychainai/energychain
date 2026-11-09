@@ -35,6 +35,7 @@ from .documents import (
     RetrievedPassage, KnowledgeAnswer, parse_document, chunk_document, energy_facts,
 )
 from .intelligence_runtime import EnergyIntelligence
+from .ensmith import EnSmithTracer, EnSmithSpan, SPAN_SCHEMA_VERSION
 
 __version__ = "0.4.0"
 __all__ = ["EnergyChain", "AssetKind", "Capability", "Metric", "EnergySite", "EnergyAsset",
@@ -65,3 +66,4 @@ __all__ += ["ModelGateway", "ModelResult", "ModelTrace", "TokenUsage", "ModelErr
             "energy_facts"]
 
 __all__ += ["EnergyIntelligence"]
+__all__ += ["EnSmithTracer", "EnSmithSpan", "SPAN_SCHEMA_VERSION"]

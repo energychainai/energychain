@@ -69,3 +69,15 @@ installation and official PyPI installation checks. Its published files and
 signatures were checked against the tested release artifacts. These results
 are engineering evidence for this SDK release, rather than certification of
 physical measurements, external providers or hosted production operations.
+
+
+## Unreleased source-only EnSmith integration relocation (10 Nov 2026)
+
+The `EnSmithTracer`, `EnSmithSpan` and `SPAN_SCHEMA_VERSION` symbols introduced in the **GitHub main branch after the published v0.4.0 release** were experimental and have been moved into the private `energychainai/ensmith` repository, in its optional `ensmith_instrumentation` package.
+
+- **Published PyPI `energychain==0.4.0` is unchanged.**
+- Source checkout users of `from energychain import EnSmithTracer` should install the private EnSmith integration using authorized repository access and change imports to `from ensmith_instrumentation import EnSmithTracer`.
+- Existing public `EnergyChain(tracer=...)`, `InMemoryTracer` and `TraceEvent` remain supported for local tracing. EnSmith integration stays opt-in; no hosted service or LLM is required.
+- The prior public source commit and its MIT permission remain in GitHub history; removing new EnSmith-specific source from main does **not** revoke previously granted rights or make historical code proprietary.
+- No package release/version bump or automatic PyPI upload is triggered by this documentation change.
+

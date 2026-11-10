@@ -75,7 +75,7 @@ Introduced in **v0.4.0**, EnergyIntelligence runs evidence-backed analysis throu
 
 - [EnergyIntelligence runtime guide](docs/intelligence-runtime.md)
 - [Model Gateway](docs/model-gateway.md)
-- [Experimental EnSmith local tracing](docs/ensmith-instrumentation.md)
+- [SDK optional telemetry and generic trace hooks](docs/telemetry-opt-in.md)
 - [Document Intelligence](docs/document-intelligence.md)
 - [Architecture](docs/architecture.md)
 - [Versioned documentation](docs/versions.md)
@@ -134,3 +134,7 @@ python examples/quickstart.py
 ```
 
 Learn more about the company at [energychain.app](https://energychain.app/) and develop with the [SDK docs](https://energychain.app/docs/).
+
+## Private EnSmith integration (unreleased source migration)
+
+EnSmith-specific tracing and services are developed in the **private** `energychainai/ensmith` repository. The public EnergyChain SDK keeps generic `InMemoryTracer` and `TraceEvent` hooks; the private optional adapter provides EnSmith-branded `EnSmithTracer`. The experimental EnSmith exports previously present **only in an unreleased GitHub main-source change** were moved before any new PyPI release. The published SDK v0.4.0 was unaffected. Previously public MIT-licensed GitHub history remains public and MIT-licensed; this migration does not undo that history.

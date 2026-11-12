@@ -18,7 +18,7 @@ classifiers = ["Development Status :: 3 - Alpha", "Intended Audience :: Develope
 models = ["jsonschema>=4.23,<5"]
 documents = ["pypdf>=5,<8", "python-docx>=1.2,<2", "openpyxl>=3.1,<4"]
 all = ["jsonschema>=4.23,<5", "pypdf>=5,<8", "python-docx>=1.2,<2", "openpyxl>=3.1,<4"]
-dev = ["pytest>=8", "build>=1", "twine>=5", "ruff>=0.6", "jsonschema>=4.23,<5",
+dev = ["pytest>=8", "build>=1", "twine>=5", "ruff>=0.17.4", "jsonschema>=4.23,<5",
        "pypdf>=5,<8", "python-docx>=1.2,<2", "openpyxl>=3.1,<4"]
 
 [project.urls]

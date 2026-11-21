@@ -91,16 +91,16 @@ python -m pip install 'energychain[all]==0.4.0'
 
 ## The EnergyChain product ecosystem
 
-**EnergyChain is the company. EnergyChain SDK is one product.** The SDK is the currently released foundation for the broader infrastructure ecosystem.
+**EnergyChain is the company; the open-source EnergyChain SDK is one part of its wider developer-infrastructure ecosystem.** Each product has its own implementation, distribution and commercialization status. Implemented software should not be confused with a publicly hosted or production-validated service.
 
 | Product | Purpose | Current status |
 | --- | --- | --- |
-| **EnergyChain SDK** | Open-source energy data, tools and intelligence building blocks | **Available:** v0.4.0 alpha |
-| **EnGraph** | Stateful orchestration for more complex energy AI workflows | **Planned product** |
-| **EnSmith** | Centralized tracing, evaluation, debugging and monitoring | **Planned product** |
-| **EnergyChain Cloud** | Managed execution, infrastructure and operational services | **Planned service** |
+| **EnergyChain SDK** | Open-source energy data, tools and intelligence building blocks | **Publicly available:** v0.4.0 alpha, distributed on PyPI and GitHub |
+| **EnGraph** | Typed, stateful orchestration of multi-step workflows, including conditional routing and optional LLM-powered agent reasoning | **Implemented, early alpha:** separately packaged and published; further runtime hardening and product maturation are ongoing |
+| **EnSmith** | Tracing, evaluation and debugging for energy AI applications | **Developed privately:** local trace ingestion, persistence, project isolation and initial evaluation suites; no publicly hosted EnSmith service yet |
+| **EnergyChain Cloud** | Managed workflow execution, integrations and operational infrastructure | **Integrated infrastructure foundation in development:** progressing toward commercial managed hosting; not yet generally available as a hosted service |
 
-The SDK already includes local workflows and tracing; the proposed products would add capabilities beyond those existing primitives.
+The SDK already provides local workflow and trace primitives. EnGraph extends orchestration, EnSmith develops dedicated observability and evaluation capabilities, and Cloud is the path toward managed operations. These implementation milestones do **not** imply external production deployment, paying customers or validated production-scale reliability.
 
 **Building energy software for an organization?** Visit [energychain.app](https://energychain.app/) to explore a pilot, integration or potential design partnership.
 

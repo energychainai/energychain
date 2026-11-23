@@ -83,6 +83,8 @@ Introduced in **v0.4.0**, EnergyIntelligence runs evidence-backed analysis throu
 
 The core SDK works without a model subscription. **There is no default LLM provider.** Applications opt into a model and supply credentials when needed.
 
+Developers with a staging project can use the [optional EnergyChain Cloud CLI](docs/cloud-cli.md) to register locally developed EnGraph workflows for Studio and managed execution.
+
 ```bash
 python -m pip install 'energychain[models]==0.4.0'
 python -m pip install 'energychain[documents]==0.4.0'

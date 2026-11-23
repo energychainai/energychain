@@ -64,12 +64,15 @@ class _FixtureAPI:
         if path == f"{_WORKFLOWS}/{_WORKFLOW_ID}/revisions" and method == "POST":
             identity = (json_data["source_digest"], json_data["graph_definition_digest"])
             result = self.versions.setdefault(identity, len(self.versions) + 1)
-            return {"revision_id": result, "version": result}
+            return {"revision_id": result, "version": result, "source_digest": identity[0],
+                    "graph_definition_digest": identity[1]}
         if path.startswith(_WORKFLOWS + "?"):
             return {"workflows": [{"name": "test-workflow", "workflow_id": _WORKFLOW_ID}]}
         if path == f"{_WORKFLOWS}/{_WORKFLOW_ID}/revisions?limit=1":
             return {"revisions": [{"revision_id": max(self.versions.values())}]}
-        if path in ("/v1/projects/battery-staging/deployments", "/v1/auth/revoke"):
+        if path == "/v1/projects/battery-staging/deployments":
+            return json_data
+        if path == "/v1/auth/revoke":
             return None
         raise AssertionError(f"Unexpected fixture call {method} {path}")
 

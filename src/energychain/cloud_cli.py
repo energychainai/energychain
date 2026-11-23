@@ -19,6 +19,7 @@ _SLUG = re.compile(r"[a-z][a-z0-9-]{0,62}")
 _WORKFLOW_ID = re.compile(r"[0-9a-f]{32}")
 _PROJECT_KEYS = {"organization_id", "project_id", "environment", "cloud_origin"}
 _SOURCE_LIMIT = 32 * 1024
+_GRAPH_LIMIT = 24 * 1024
 
 
 class SystemCredentials:
@@ -201,6 +202,11 @@ def _push(args, client: CloudClient, token: str, root: Path, link: dict, cwd: Pa
     name = args.name if args.name is not None else topology["id"].lower()
     if not _valid_id(name):
         raise CloudError("Set --name to a stable lower-case workflow name with letters, digits or hyphens.")
+    graph_bytes = canonical_json(topology)
+    if len(graph_bytes) > _GRAPH_LIMIT:
+        raise CloudError("The compiled graph topology exceeds the 24 KiB staging limit.")
+    source_digest = hashlib.sha256(source.encode("utf-8")).hexdigest()
+    graph_digest = hashlib.sha256(graph_bytes).hexdigest()
     collection = _workflow_collection(link)
     registered = client.request("POST", collection, token=token, json_data={"name": name})
     workflow_id = registered.get("workflow_id") if registered else None
@@ -208,15 +214,16 @@ def _push(args, client: CloudClient, token: str, root: Path, link: dict, cwd: Pa
         raise CloudError("Cloud returned an invalid workflow identifier.")
     pushed = client.request("POST", f"{collection}/{workflow_id}/revisions", token=token, json_data={
         "source": source,
-        "source_digest": hashlib.sha256(source.encode("utf-8")).hexdigest(),
+        "source_digest": source_digest,
         "graph_definition": topology,
-        "graph_definition_digest": hashlib.sha256(canonical_json(topology)).hexdigest(),
+        "graph_definition_digest": graph_digest,
         "app_symbol": "graph",
         "environment": link["environment"],
     })
     revision_id = pushed.get("revision_id") if pushed else None
-    if not _valid_revision(revision_id):
-        raise CloudError("Cloud returned an invalid workflow revision.")
+    if (not _valid_revision(revision_id) or pushed.get("source_digest") != source_digest
+            or pushed.get("graph_definition_digest") != graph_digest):
+        raise CloudError("Cloud did not confirm this workflow revision and its digests.")
     _write_metadata(_metadata_file(root, "workflow.json"), {
         "name": name, "revision_id": revision_id, "workflow_id": workflow_id, **link,
     })
@@ -266,9 +273,13 @@ def _deploy(args, client: CloudClient, token: str, root: Path, link: dict) -> No
                 revision_id = revisions[0].get("revision_id")
     if not _valid_revision(revision_id):
         raise CloudError("Choose an existing workflow revision or push the workflow first.")
-    client.request("POST", f'/v1/projects/{link["project_id"]}/deployments', token=token, json_data={
+    deployment = {
         "workflow_id": workflow_id, "revision_id": revision_id, "environment": environment,
-    })
+    }
+    activated = client.request("POST", f'/v1/projects/{link["project_id"]}/deployments', token=token,
+                               json_data=deployment)
+    if not activated or any(activated.get(key) != value for key, value in deployment.items()):
+        raise CloudError("Cloud did not confirm the selected deployment.")
     print(f"Deployed {name} revision {revision_id} to {environment}.")
 
 

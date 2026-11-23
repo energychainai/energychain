@@ -14,7 +14,11 @@ authors = [{name = "EnergyChain Contributors"}]
 keywords = ["energy AI", "energy infrastructure", "solar", "battery", "mini-grid", "agents", "workflows", "energychain", "SDK"]
 classifiers = ["Development Status :: 3 - Alpha", "Intended Audience :: Developers", "Programming Language :: Python :: 3", "Programming Language :: Python :: 3.10", "Programming Language :: Python :: 3.11", "Programming Language :: Python :: 3.12", "Programming Language :: Python :: 3.13", "Topic :: Scientific/Engineering", "Topic :: Software Development :: Libraries :: Python Modules"]
 
+[project.scripts]
+energychain = "energychain.cloud_cli:main"
+
 [project.optional-dependencies]
+cloud = ["keyring>=25,<26"]
 models = ["jsonschema>=4.23,<5"]
 documents = ["pypdf>=5,<8", "python-docx>=1.2,<2", "openpyxl>=3.1,<4"]
 all = ["jsonschema>=4.23,<5", "pypdf>=5,<8", "python-docx>=1.2,<2", "openpyxl>=3.1,<4"]

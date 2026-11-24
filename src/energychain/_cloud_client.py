@@ -14,7 +14,11 @@ from urllib.parse import urlencode
 from urllib.request import HTTPRedirectHandler, ProxyHandler, Request, build_opener
 
 CLOUD_ORIGIN = "https://cloud.energychain.app"
-_VERIFY_URL = CLOUD_ORIGIN + "/auth/cli/authorize"
+PRODUCTION_CANARY_ORIGIN = (
+    "https://ca-ec-production-identity.purplesmoke-259274cf.spaincentral.azurecontainerapps.io"
+)
+_CLOUD_ORIGINS = frozenset({CLOUD_ORIGIN, PRODUCTION_CANARY_ORIGIN})
+_VERIFY_PATH = "/auth/cli/authorize"
 _MAX_RESPONSE_BYTES = 1024 * 1024
 _DEVICE_GRANT = "urn:ietf:params:oauth:grant-type:device_code"
 _TOKEN = re.compile(r"ec_cli_[A-Za-z0-9_-]{43}")
@@ -24,6 +28,12 @@ _USER_CODE = re.compile(r"[BCDFGHJKLMNPQRSTVWXYZ23456789]{4}-[BCDFGHJKLMNPQRSTVW
 
 class CloudError(Exception):
     """A user-facing Cloud error with no provider payload or credentials."""
+
+
+def require_cloud_origin(origin: str) -> str:
+    if not isinstance(origin, str) or origin not in _CLOUD_ORIGINS:
+        raise CloudError("Choose a supported EnergyChain Cloud HTTPS origin.")
+    return origin
 
 
 class CloudHTTPError(CloudError):
@@ -74,7 +84,8 @@ def is_token(value) -> bool:
 class CloudClient:
     """Use the EnergyChain Cloud TLS origin without forwarding bearer tokens."""
 
-    def __init__(self, *, opener=None):
+    def __init__(self, *, origin: str = CLOUD_ORIGIN, opener=None):
+        self._origin = require_cloud_origin(origin)
         self._opener = opener or build_opener(ProxyHandler({}), _NoRedirect())
 
     def request(self, method: str, path: str, *, token: str | None = None, json_data=None,
@@ -93,7 +104,7 @@ class CloudClient:
         if form is not None:
             headers["Content-Type"] = "application/x-www-form-urlencoded"
             body = urlencode(form).encode("ascii")
-        request = Request(CLOUD_ORIGIN + path, data=body, headers=headers, method=method)
+        request = Request(self._origin + path, data=body, headers=headers, method=method)
         try:
             with self._opener.open(request, timeout=12) as response:
                 return None if response.status == 204 else _payload(response)
@@ -114,7 +125,8 @@ class CloudClient:
             "code_challenge": challenge.rstrip(b"=").decode("ascii"),
             "code_challenge_method": "S256",
         })
-        if authorization is None or authorization.get("verification_uri") != _VERIFY_URL:
+        verification_url = self._origin + _VERIFY_PATH
+        if authorization is None or authorization.get("verification_uri") != verification_url:
             raise CloudError("Cloud returned an unexpected authorization page.")
         device_code = authorization.get("device_code")
         user_code = authorization.get("user_code")
@@ -125,9 +137,9 @@ class CloudClient:
                 or type(interval) is not int or not 1 <= interval <= 60):
             raise CloudError("Cloud returned invalid authorization details.")
         deadline = monotonic() + lifetime
-        show_code(_VERIFY_URL, user_code)
+        show_code(verification_url, user_code)
         if open_browser is not None:
-            open_browser(_VERIFY_URL)
+            open_browser(verification_url)
         while monotonic() + interval < deadline:
             sleep(interval)
             try:

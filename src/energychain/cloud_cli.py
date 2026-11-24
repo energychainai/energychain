@@ -13,7 +13,14 @@ from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 from tempfile import NamedTemporaryFile, TemporaryDirectory
 
-from ._cloud_client import CLOUD_ORIGIN, CloudClient, CloudError, CloudHTTPError, canonical_json
+from ._cloud_client import (
+    CLOUD_ORIGIN,
+    CloudClient,
+    CloudError,
+    CloudHTTPError,
+    canonical_json,
+    require_cloud_origin,
+)
 
 _SLUG = re.compile(r"[a-z][a-z0-9-]{0,62}")
 _WORKFLOW_ID = re.compile(r"[0-9a-f]{32}")
@@ -26,9 +33,9 @@ class SystemCredentials:
     """Store a developer bearer in the built-in OS credential backend."""
 
     _service = "EnergyChain Cloud"
-    _account = CLOUD_ORIGIN
 
-    def __init__(self):
+    def __init__(self, origin: str = CLOUD_ORIGIN):
+        self._account = require_cloud_origin(origin)
         try:
             if sys.platform == "win32":
                 from keyring.backends.Windows import WinVaultKeyring as Backend
@@ -75,8 +82,11 @@ def _valid_revision(value) -> bool:
     return type(value) is int and 1 <= value <= 2_147_483_647
 
 
-def _metadata_file(directory: Path, name: str) -> Path:
+def _metadata_file(directory: Path, name: str, origin: str) -> Path:
     base = directory / ".energychain"
+    if origin != CLOUD_ORIGIN:
+        stem, suffix = name.rsplit(".", 1)
+        name = f"{stem}.{origin.removeprefix('https://')}.{suffix}"
     path = base / name
     if base.is_symlink() or path.is_symlink() or base.resolve().parent != directory:
         raise CloudError("Use a regular .energychain directory and metadata files inside the project.")
@@ -123,23 +133,37 @@ def _projects(client: CloudClient, token: str) -> list[dict]:
     return projects
 
 
-def _find_project(projects: list[dict], project_id: str, environment: str, organization=None) -> dict:
+def _find_project(projects: list[dict], project_id: str, environment: str | None, organization=None) -> dict:
     matches = [
         project for project in projects
-        if project["project_id"] == project_id and environment in project["environments"]
+        if project["project_id"] == project_id
+        and (environment is None or environment in project["environments"])
         and (organization is None or project["organization_id"] == organization)
     ]
+    if len(matches) > 1 and environment is None:
+        matches = [project for project in matches if "staging" in project["environments"]]
     if len(matches) != 1:
         raise CloudError("The requested project and environment are unavailable to this identity.")
     return matches[0]
 
 
-def _read_link(root: Path) -> tuple[Path, dict]:
+def _link_environment(project: dict, requested: str | None) -> str:
+    if requested is not None:
+        return requested
+    environments = project["environments"]
+    if len(environments) == 1:
+        return environments[0]
+    if "staging" in environments:
+        return "staging"
+    raise CloudError("Choose a project environment with --environment.")
+
+
+def _read_link(root: Path, origin: str) -> tuple[Path, dict]:
     for directory in (root, *root.parents):
-        path = _metadata_file(directory, "project.json")
+        path = _metadata_file(directory, "project.json", origin)
         if path.is_file():
             link = _read_metadata(path)
-            if (link.keys() == _PROJECT_KEYS and link["cloud_origin"] == CLOUD_ORIGIN
+            if (link.keys() == _PROJECT_KEYS and link["cloud_origin"] == origin
                     and all(_valid_id(link[key]) for key in _PROJECT_KEYS - {"cloud_origin"})):
                 return directory, link
             break
@@ -204,7 +228,7 @@ def _push(args, client: CloudClient, token: str, root: Path, link: dict, cwd: Pa
         raise CloudError("Set --name to a stable lower-case workflow name with letters, digits or hyphens.")
     graph_bytes = canonical_json(topology)
     if len(graph_bytes) > _GRAPH_LIMIT:
-        raise CloudError("The compiled graph topology exceeds the 24 KiB staging limit.")
+        raise CloudError("The compiled graph topology exceeds the 24 KiB Cloud limit.")
     source_digest = hashlib.sha256(source.encode("utf-8")).hexdigest()
     graph_digest = hashlib.sha256(graph_bytes).hexdigest()
     collection = _workflow_collection(link)
@@ -224,7 +248,7 @@ def _push(args, client: CloudClient, token: str, root: Path, link: dict, cwd: Pa
     if (not _valid_revision(revision_id) or pushed.get("source_digest") != source_digest
             or pushed.get("graph_definition_digest") != graph_digest):
         raise CloudError("Cloud did not confirm this workflow revision and its digests.")
-    _write_metadata(_metadata_file(root, "workflow.json"), {
+    _write_metadata(_metadata_file(root, "workflow.json", link["cloud_origin"]), {
         "name": name, "revision_id": revision_id, "workflow_id": workflow_id, **link,
     })
     print(f"Registered {name} revision {revision_id} in {link['project_id']}.")
@@ -254,7 +278,7 @@ def _deploy(args, client: CloudClient, token: str, root: Path, link: dict) -> No
     collection = _workflow_collection(link)
     revision_id = args.revision
     if args.name is None:
-        selection = _read_metadata(_metadata_file(root, "workflow.json"))
+        selection = _read_metadata(_metadata_file(root, "workflow.json", link["cloud_origin"]))
         workflow_id, name = selection.get("workflow_id"), selection.get("name")
         if (any(selection.get(key) != value for key, value in link.items())
                 or not _valid_id(workflow_id, _WORKFLOW_ID) or not _valid_id(name)):
@@ -306,7 +330,7 @@ def _login(args, client: CloudClient, credentials: SystemCredentials) -> None:
     print("Signed in to EnergyChain Cloud.")
 
 
-def _run(args, client: CloudClient, credentials: SystemCredentials, cwd: Path) -> None:
+def _run(args, client: CloudClient, credentials: SystemCredentials, cwd: Path, origin: str) -> None:
     if args.command == "auth" and args.action == "login":
         _login(args, client, credentials)
         return
@@ -331,13 +355,14 @@ def _run(args, client: CloudClient, credentials: SystemCredentials, cwd: Path) -
             print("No Cloud projects are assigned to this identity.")
     elif args.command == "project":
         project = _find_project(projects, args.project, args.environment)
-        _write_metadata(_metadata_file(cwd, "project.json"), {
+        environment = _link_environment(project, args.environment)
+        _write_metadata(_metadata_file(cwd, "project.json", origin), {
             "organization_id": project["organization_id"], "project_id": project["project_id"],
-            "environment": args.environment, "cloud_origin": CLOUD_ORIGIN,
+            "environment": environment, "cloud_origin": origin,
         })
-        print(f'Linked this folder to {project["project_id"]} ({args.environment}).')
+        print(f'Linked this folder to {project["project_id"]} ({environment}).')
     else:
-        root, link = _read_link(cwd)
+        root, link = _read_link(cwd, origin)
         _find_project(projects, link["project_id"], link["environment"], link["organization_id"])
         if args.action == "push":
             _push(args, client, token, root, link, cwd)
@@ -347,6 +372,8 @@ def _run(args, client: CloudClient, credentials: SystemCredentials, cwd: Path) -
 
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="energychain", description="EnergyChain Cloud developer tools")
+    parser.add_argument("--cloud-origin",
+                        help="approved Cloud URL (defaults to EC_CLOUD_ORIGIN or cloud.energychain.app)")
     commands = parser.add_subparsers(dest="command", required=True)
     auth = commands.add_parser("auth", help="authorize the CLI with EnergyChain Cloud")
     auth_actions = auth.add_subparsers(dest="action", required=True)
@@ -358,7 +385,7 @@ def _parser() -> argparse.ArgumentParser:
     project = commands.add_parser("project", help="link a local folder to Cloud")
     link = project.add_subparsers(dest="action", required=True).add_parser("link")
     link.add_argument("project")
-    link.add_argument("--environment", default="staging")
+    link.add_argument("--environment", help="project environment (defaults to the assigned environment)")
     workflow = commands.add_parser("workflow", help="register and deploy trusted EnGraph workflows")
     workflow_actions = workflow.add_subparsers(dest="action", required=True)
     push = workflow_actions.add_parser("push", help="register a revision from trusted local Python")
@@ -374,7 +401,9 @@ def _parser() -> argparse.ArgumentParser:
 def main(argv=None, *, client=None, credentials=None, cwd=None) -> int:
     args = _parser().parse_args(argv)
     try:
-        _run(args, client or CloudClient(), credentials or SystemCredentials(), (cwd or Path.cwd()).resolve())
+        origin = require_cloud_origin(args.cloud_origin or os.getenv("EC_CLOUD_ORIGIN", CLOUD_ORIGIN))
+        _run(args, client or CloudClient(origin=origin), credentials or SystemCredentials(origin),
+             (cwd or Path.cwd()).resolve(), origin)
     except CloudError as error:
         print(error, file=sys.stderr)
         return 1

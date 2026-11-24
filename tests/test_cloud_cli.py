@@ -4,14 +4,22 @@ import base64
 import hashlib
 import io
 import json
+import sys
 from email.message import Message
+from types import SimpleNamespace
 from urllib.error import HTTPError
 from urllib.parse import parse_qs
 
 import pytest
 
-from energychain._cloud_client import CLOUD_ORIGIN, CloudClient, CloudError, canonical_json
-from energychain.cloud_cli import _load_workflow, main
+from energychain._cloud_client import (
+    CLOUD_ORIGIN,
+    PRODUCTION_CANARY_ORIGIN,
+    CloudClient,
+    CloudError,
+    canonical_json,
+)
+from energychain.cloud_cli import SystemCredentials, _load_workflow, main
 
 _ACCESS = "ec_cli_" + "T" * 43
 _WORKFLOW_ID = "1" * 32
@@ -141,6 +149,88 @@ def test_cli_login_link_push_and_deploy_keep_credentials_out_of_metadata(tmp_pat
     assert _ACCESS not in logs.out + logs.err
 
 
+def test_production_origin_keeps_credentials_links_and_deployment_separate(tmp_path, monkeypatch):
+    stored = {}
+
+    class Keyring:
+        priority = 1
+
+        def get_password(self, service, account):
+            return stored.get((service, account))
+
+        def set_password(self, service, account, token):
+            stored[service, account] = token
+
+        def delete_password(self, service, account):
+            del stored[service, account]
+
+    staging = _FixtureAPI()
+    production_grant = {
+        "organization_id": "example-workspace", "project_id": "example-project", "environments": ["production"],
+    }
+    production_token = "ec_cli_" + "P" * 43
+    collection = "/v1/projects/example-project/workflows"
+
+    class Production:
+        def __init__(self):
+            self.deployments = []
+
+        def login(self, *, show_code, open_browser):
+            assert open_browser is None
+            show_code(PRODUCTION_CANARY_ORIGIN + "/auth/cli/authorize", "BCDF-GHJK")
+            return production_token
+
+        def request(self, method, path, *, token, json_data=None):
+            assert token == production_token
+            if (method, path) == ("GET", "/v1/projects"):
+                return {"projects": [production_grant]}
+            if (method, path) == ("POST", collection):
+                return {"workflow_id": "2" * 32}
+            if (method, path) == ("POST", f"{collection}/{'2' * 32}/revisions"):
+                assert json_data["environment"] == "production"
+                return {**json_data, "revision_id": 3}
+            if (method, path) == ("POST", "/v1/projects/example-project/deployments"):
+                self.deployments.append(json_data)
+                return json_data
+            if (method, path) == ("POST", "/v1/auth/revoke"):
+                return None
+            pytest.fail(f"Unexpected production request {method} {path}")
+
+    production = Production()
+    monkeypatch.setattr(sys, "platform", "win32")
+    monkeypatch.setitem(sys.modules, "keyring.backends.Windows", SimpleNamespace(WinVaultKeyring=Keyring))
+    monkeypatch.setattr("energychain.cloud_cli.CloudClient",
+                        lambda *, origin: {CLOUD_ORIGIN: staging, PRODUCTION_CANARY_ORIGIN: production}[origin])
+    monkeypatch.setattr("energychain.cloud_cli._load_workflow",
+                        lambda app, cwd: ("# workflow\n", {"id": "test-workflow"}))
+    monkeypatch.delenv("EC_CLOUD_ORIGIN", raising=False)
+
+    def run(*args):
+        return main(args, cwd=tmp_path)
+
+    assert run("auth", "login", "--no-browser") == 0
+    assert run("project", "link", "battery-staging") == 0
+    assert run("workflow", "push") == 0
+    monkeypatch.setenv("EC_CLOUD_ORIGIN", PRODUCTION_CANARY_ORIGIN)
+    assert run("projects", "list") == 1
+    assert run("auth", "login", "--no-browser") == 0
+    assert run("workflow", "push") == 1
+    assert run("project", "link", "example-project", "--environment", "staging") == 1
+    assert run("project", "link", "example-project") == 0
+    assert run("workflow", "push") == 0
+    assert run("workflow", "deploy", "--environment", "staging") == 1
+    assert run("workflow", "deploy") == 0
+    assert production.deployments == [{"workflow_id": "2" * 32, "revision_id": 3, "environment": "production"}]
+    assert run("--cloud-origin", CLOUD_ORIGIN, "workflow", "deploy") == 0
+    assert staging.requests[-1][2]["environment"] == "staging"
+    assert {json.loads(path.read_text())["cloud_origin"] for path in (tmp_path / ".energychain").iterdir()} == {
+        CLOUD_ORIGIN, PRODUCTION_CANARY_ORIGIN,
+    }
+    assert run("auth", "logout") == 0
+    assert SystemCredentials(PRODUCTION_CANARY_ORIGIN).get() is None
+    assert SystemCredentials().get() == _ACCESS
+
+
 class _Response(io.BytesIO):
     def __init__(self, payload):
         super().__init__(json.dumps(payload).encode())
@@ -149,16 +239,17 @@ class _Response(io.BytesIO):
         self.headers["Content-Type"] = "application/json"
 
 
-def test_http_device_login_proves_verifier_and_waits_for_slow_down():
+@pytest.mark.parametrize("origin", [CLOUD_ORIGIN, PRODUCTION_CANARY_ORIGIN])
+def test_http_device_login_proves_verifier_and_waits_for_slow_down(origin):
     grant = {
         "device_code": "D" * 43, "user_code": "BCDF-GHJK", "expires_in": 60, "interval": 5,
-        "verification_uri": CLOUD_ORIGIN + "/auth/cli/authorize",
+        "verification_uri": origin + "/auth/cli/authorize",
     }
     forms = []
 
     class Opener:
         def open(self, request, *, timeout):
-            assert request.full_url.startswith(CLOUD_ORIGIN + "/v1/auth/")
+            assert request.full_url.startswith(origin + "/v1/auth/")
             assert request.get_method() == "POST"
             assert request.get_header("Content-type") == "application/x-www-form-urlencoded"
             assert not request.get_header("Authorization")
@@ -172,7 +263,7 @@ def test_http_device_login_proves_verifier_and_waits_for_slow_down():
             return _Response({"token_type": "Bearer", "access_token": _ACCESS,
                               "scope": "cloud:workflow", "expires_in": 60})
 
-    client = CloudClient(opener=Opener())
+    client = CloudClient(origin=origin, opener=Opener())
     waits, prompts, opened = [], [], []
     token = client.login(show_code=lambda url, code: prompts.append((url, code)), open_browser=opened.append,
                          monotonic=lambda: sum(waits), sleep=waits.append)
@@ -187,16 +278,33 @@ def test_http_device_login_proves_verifier_and_waits_for_slow_down():
     assert forms[1]["device_code"] == [grant["device_code"]]
 
 
-def test_login_never_opens_a_provider_supplied_foreign_origin():
+@pytest.mark.parametrize("verification_uri", [
+    "https://unrelated.invalid/auth/cli/authorize",
+    PRODUCTION_CANARY_ORIGIN + "/auth/cli/authorize",
+    CLOUD_ORIGIN + "/auth/cli/authorize?code=unexpected",
+])
+def test_login_never_opens_an_unexpected_verification_url(verification_uri):
     class Opener:
         def open(self, request, *, timeout):
-            return _Response({"verification_uri": "https://unrelated.invalid/auth/cli/authorize"})
+            return _Response({"verification_uri": verification_uri})
 
     with pytest.raises(CloudError, match="unexpected authorization page"):
         CloudClient(opener=Opener()).login(
             show_code=lambda *_: pytest.fail("Displayed an untrusted page"),
             open_browser=lambda *_: pytest.fail("Opened an untrusted page"),
         )
+
+
+@pytest.mark.parametrize("origin", [
+    "http://cloud.energychain.app",
+    "https://cloud.energychain.app/",
+    "https://cloud.energychain.app.example.invalid",
+    "https://ca-ec-production-identity.unrelated.spaincentral.azurecontainerapps.io",
+    "https://cloud.energychain.app@example.invalid",
+])
+def test_cli_rejects_an_unapproved_cloud_origin_before_using_credentials(origin, monkeypatch):
+    monkeypatch.setattr("energychain.cloud_cli.SystemCredentials", lambda *_: pytest.fail("Opened credential store"))
+    assert main(["--cloud-origin", origin, "projects", "list"]) == 1
 
 
 def test_real_engraph_projection_excludes_runtime_capture_and_metadata(tmp_path):

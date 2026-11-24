@@ -35,6 +35,41 @@ print(result.text, result.usage.input_tokens, result.duration_ms)
 
 Existing EnergyAgent applications can use model=gateway.as_text_model(). The gateway implements generate(system, user, context).
 
+## Read an application's selection from EnergyChain Cloud
+
+Configure the provider and model under **LLMs** in Cloud. Store the application's ID and
+its Cloud credential in the server's secret store. Pass the provider factories this
+workload is allowed to use. Each factory can also enforce its own model allowlist.
+
+~~~python
+import os
+
+from energychain import ModelGateway
+from energychain.cloud_applications import CloudApplications
+
+
+def build_openai(model):
+    if model != os.environ["APP_APPROVED_OPENAI_MODEL"]:
+        raise ValueError("Model is outside the application's allowlist.")
+    return ModelGateway("openai", model, timeout=10, max_retries=0)
+
+
+application = CloudApplications(
+    os.environ["EC_APPLICATION_ID"],
+    os.environ["EC_APPLICATION_TOKEN"],
+)
+gateway = application.model_gateway({"openai": build_openai})
+~~~
+
+The call returns `None` when model use is disabled. Fetch the selection at application
+startup or at the start of a run when workers should pick up changes. The local
+factory sets the model endpoint, timeout, and provider credential. For EnGraph,
+pass an enabled gateway to `engraph.GatewayModel(gateway, model_id="configured-model")`
+and configure the node deadline to be at least the gateway timeout.
+
+Cloud's application credential is used only for the settings request. Provider
+credentials and model request and response content stay on the workload-to-provider path.
+
 ## Structured outputs
 
 The optional models extra installs jsonschema. Schema validity is checked before submission and the resulting JSON is validated independently of the provider's claimed schema support.

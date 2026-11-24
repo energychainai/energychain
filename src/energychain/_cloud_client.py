@@ -14,10 +14,11 @@ from urllib.parse import urlencode
 from urllib.request import HTTPRedirectHandler, ProxyHandler, Request, build_opener
 
 CLOUD_ORIGIN = "https://cloud.energychain.app"
+STAGING_ORIGIN = "https://staging.energychain.app"
 PRODUCTION_CANARY_ORIGIN = (
     "https://ca-ec-production-identity.purplesmoke-259274cf.spaincentral.azurecontainerapps.io"
 )
-_CLOUD_ORIGINS = frozenset({CLOUD_ORIGIN, PRODUCTION_CANARY_ORIGIN})
+_CLOUD_ORIGINS = frozenset({CLOUD_ORIGIN, STAGING_ORIGIN, PRODUCTION_CANARY_ORIGIN})
 _VERIFY_PATH = "/auth/cli/authorize"
 _MAX_RESPONSE_BYTES = 1024 * 1024
 _DEVICE_GRANT = "urn:ietf:params:oauth:grant-type:device_code"

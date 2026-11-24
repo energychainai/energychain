@@ -25,11 +25,16 @@ energychain workflow push --app workflow.py:graph
 energychain workflow deploy
 ```
 
-Use a project returned by `projects list`. If the project has one environment, the CLI selects it when linking. Use `project link <project-id> --environment production` to select a production grant explicitly, or `--environment staging` for a staging grant. Deployment uses the environment of the local project link.
+Use a project returned by `projects list`. The CLI checks that the grant matches the environment of the selected website. Deployment uses the environment of the local project link.
 
-The CLI defaults to `https://cloud.energychain.app`. For the production canary, set `EC_CLOUD_ORIGIN` to `https://ca-ec-production-identity.purplesmoke-259274cf.spaincentral.azurecontainerapps.io` or pass `--cloud-origin` before the command. Sign in and link your project on the selected site first. The CLI accepts only those two HTTPS origins.
+The CLI defaults to production at `https://cloud.energychain.app`. To use staging, set `EC_CLOUD_ORIGIN` to `https://staging.energychain.app` or pass `--cloud-origin` before each command.
 
-The CLI writes `.energychain/project.json` and `.energychain/workflow.json` for the default origin and separate, hostname-qualified files for the canary. Your short-lived developer credential stays in the OS credential store under the selected origin. Run `energychain auth logout` on that origin to revoke it.
+```sh
+energychain --cloud-origin https://staging.energychain.app auth login
+energychain --cloud-origin https://staging.energychain.app projects list
+```
+
+If you used the old CLI while staging ran at `cloud.energychain.app`, sign in and link the project again on `staging.energychain.app`. The CLI uses hostname-qualified project and workflow files in `.energychain` and a separate OS credential store entry for each site. Run `energychain auth logout` on the selected site to revoke its credential.
 
 Push takes one UTF-8 Python file of up to 32 KiB that exports one EnGraph `Graph` or `CompiledGraph` as `graph`. It runs the trusted local file to compile the topology. Cloud receives the source artifact for isolated execution and an allowlisted graph definition for Studio. Keep credentials out of source files, graph labels and route names.
 

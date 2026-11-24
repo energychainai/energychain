@@ -15,6 +15,7 @@ from tempfile import NamedTemporaryFile, TemporaryDirectory
 
 from ._cloud_client import (
     CLOUD_ORIGIN,
+    STAGING_ORIGIN,
     CloudClient,
     CloudError,
     CloudHTTPError,
@@ -36,6 +37,9 @@ class SystemCredentials:
 
     def __init__(self, origin: str = CLOUD_ORIGIN):
         self._account = require_cloud_origin(origin)
+        if origin == CLOUD_ORIGIN:
+            # The canonical origin previously held only the staging pilot.
+            self._account = f"production:{origin}"
         try:
             if sys.platform == "win32":
                 from keyring.backends.Windows import WinVaultKeyring as Backend
@@ -84,10 +88,8 @@ def _valid_revision(value) -> bool:
 
 def _metadata_file(directory: Path, name: str, origin: str) -> Path:
     base = directory / ".energychain"
-    if origin != CLOUD_ORIGIN:
-        stem, suffix = name.rsplit(".", 1)
-        name = f"{stem}.{origin.removeprefix('https://')}.{suffix}"
-    path = base / name
+    stem, suffix = name.rsplit(".", 1)
+    path = base / f"{stem}.{origin.removeprefix('https://')}.{suffix}"
     if base.is_symlink() or path.is_symlink() or base.resolve().parent != directory:
         raise CloudError("Use a regular .energychain directory and metadata files inside the project.")
     return path
@@ -120,42 +122,29 @@ def _read_metadata(path: Path) -> dict:
     raise CloudError("Could not read EnergyChain project metadata. Run energychain project link or workflow push.")
 
 
-def _projects(client: CloudClient, token: str) -> list[dict]:
+def _projects(client: CloudClient, token: str, environment: str) -> list[dict]:
     result = client.request("GET", "/v1/projects", token=token)
     projects = result.get("projects") if result else None
     if not isinstance(projects, list):
         raise CloudError("Cloud returned an unexpected list of projects.")
     for project in projects:
         if (not isinstance(project, dict) or not _valid_id(project.get("organization_id"))
-                or not _valid_id(project.get("project_id")) or not isinstance(project.get("environments"), list)
-                or not all(_valid_id(environment) for environment in project["environments"])):
+                or not _valid_id(project.get("project_id"))):
             raise CloudError("Cloud returned invalid project metadata.")
+        if project.get("environments") != [environment]:
+            raise CloudError(f"Cloud returned project access outside the selected {environment} site.")
     return projects
 
 
-def _find_project(projects: list[dict], project_id: str, environment: str | None, organization=None) -> dict:
+def _find_project(projects: list[dict], project_id: str, environment: str, organization=None) -> dict:
     matches = [
         project for project in projects
-        if project["project_id"] == project_id
-        and (environment is None or environment in project["environments"])
+        if project["project_id"] == project_id and environment in project["environments"]
         and (organization is None or project["organization_id"] == organization)
     ]
-    if len(matches) > 1 and environment is None:
-        matches = [project for project in matches if "staging" in project["environments"]]
     if len(matches) != 1:
         raise CloudError("The requested project and environment are unavailable to this identity.")
     return matches[0]
-
-
-def _link_environment(project: dict, requested: str | None) -> str:
-    if requested is not None:
-        return requested
-    environments = project["environments"]
-    if len(environments) == 1:
-        return environments[0]
-    if "staging" in environments:
-        return "staging"
-    raise CloudError("Choose a project environment with --environment.")
 
 
 def _read_link(root: Path, origin: str) -> tuple[Path, dict]:
@@ -314,12 +303,14 @@ def _open_browser(url: str) -> None:
         pass  # The authorization address was already printed for manual use.
 
 
-def _login(args, client: CloudClient, credentials: SystemCredentials) -> None:
+def _login(args, client: CloudClient, credentials: SystemCredentials, environment: str) -> None:
     def show_code(url, user_code):
         print(f"Open {url} and enter this confirmation code\n{user_code}", flush=True)
 
     token = client.login(show_code=show_code, open_browser=None if args.no_browser else _open_browser)
     try:
+        if not _projects(client, token, environment):
+            raise CloudError(f"Your Cloud account has no project grant on the selected {environment} site.")
         credentials.save(token)
     except CloudError:
         try:
@@ -331,8 +322,9 @@ def _login(args, client: CloudClient, credentials: SystemCredentials) -> None:
 
 
 def _run(args, client: CloudClient, credentials: SystemCredentials, cwd: Path, origin: str) -> None:
+    environment = "staging" if origin == STAGING_ORIGIN else "production"
     if args.command == "auth" and args.action == "login":
-        _login(args, client, credentials)
+        _login(args, client, credentials, environment)
         return
     token = credentials.get()
     if not token:
@@ -346,7 +338,7 @@ def _run(args, client: CloudClient, credentials: SystemCredentials, cwd: Path, o
         credentials.remove()
         print("Signed out of EnergyChain Cloud.")
         return
-    projects = _projects(client, token)
+    projects = _projects(client, token, environment)
     if args.command == "projects":
         for project in projects:
             environment_labels = ", ".join(project["environments"])
@@ -354,8 +346,7 @@ def _run(args, client: CloudClient, credentials: SystemCredentials, cwd: Path, o
         if not projects:
             print("No Cloud projects are assigned to this identity.")
     elif args.command == "project":
-        project = _find_project(projects, args.project, args.environment)
-        environment = _link_environment(project, args.environment)
+        project = _find_project(projects, args.project, args.environment or environment)
         _write_metadata(_metadata_file(cwd, "project.json", origin), {
             "organization_id": project["organization_id"], "project_id": project["project_id"],
             "environment": environment, "cloud_origin": origin,

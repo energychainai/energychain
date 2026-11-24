@@ -15,6 +15,7 @@ import pytest
 from energychain._cloud_client import (
     CLOUD_ORIGIN,
     PRODUCTION_CANARY_ORIGIN,
+    STAGING_ORIGIN,
     CloudClient,
     CloudError,
     canonical_json,
@@ -32,7 +33,7 @@ _LINK = {
     "organization_id": _PROJECT["organization_id"],
     "project_id": _PROJECT["project_id"],
     "environment": "staging",
-    "cloud_origin": CLOUD_ORIGIN,
+    "cloud_origin": STAGING_ORIGIN,
 }
 _WORKFLOWS = "/v1/projects/battery-staging/workflows"
 
@@ -58,7 +59,7 @@ class _FixtureAPI:
 
     def login(self, *, show_code, open_browser):
         assert open_browser is None
-        show_code(CLOUD_ORIGIN + "/auth/cli/authorize", "BCDF-GHJK")
+        show_code(STAGING_ORIGIN + "/auth/cli/authorize", "BCDF-GHJK")
         return _ACCESS
 
     def request(self, method, path, *, token, json_data=None):
@@ -89,7 +90,7 @@ def test_cli_login_link_push_and_deploy_keep_credentials_out_of_metadata(tmp_pat
     client, credentials = _FixtureAPI(), _Credentials()
 
     def run(*args):
-        return main(args, client=client, credentials=credentials, cwd=tmp_path)
+        return main(("--cloud-origin", STAGING_ORIGIN, *args), client=client, credentials=credentials, cwd=tmp_path)
 
     assert run("projects", "list") == 1
     assert run("auth", "login", "--no-browser") == 0
@@ -99,7 +100,7 @@ def test_cli_login_link_push_and_deploy_keep_credentials_out_of_metadata(tmp_pat
     assert "battery-staging" in capsys.readouterr().out
     assert run("project", "link", "other-project") == 1
     assert run("project", "link", "battery-staging") == 0
-    config = tmp_path / ".energychain" / "project.json"
+    config = tmp_path / ".energychain" / "project.staging.energychain.app.json"
     assert json.loads(config.read_text()) == _LINK
 
     graph = {
@@ -149,8 +150,9 @@ def test_cli_login_link_push_and_deploy_keep_credentials_out_of_metadata(tmp_pat
     assert _ACCESS not in logs.out + logs.err
 
 
-def test_production_origin_keeps_credentials_links_and_deployment_separate(tmp_path, monkeypatch):
-    stored = {}
+@pytest.mark.parametrize("production_origin", [CLOUD_ORIGIN, PRODUCTION_CANARY_ORIGIN])
+def test_production_origin_keeps_credentials_links_and_deployment_separate(tmp_path, monkeypatch, production_origin):
+    stored = {("EnergyChain Cloud", CLOUD_ORIGIN): _ACCESS}
 
     class Keyring:
         priority = 1
@@ -177,7 +179,7 @@ def test_production_origin_keeps_credentials_links_and_deployment_separate(tmp_p
 
         def login(self, *, show_code, open_browser):
             assert open_browser is None
-            show_code(PRODUCTION_CANARY_ORIGIN + "/auth/cli/authorize", "BCDF-GHJK")
+            show_code(production_origin + "/auth/cli/authorize", "BCDF-GHJK")
             return production_token
 
         def request(self, method, path, *, token, json_data=None):
@@ -200,18 +202,28 @@ def test_production_origin_keeps_credentials_links_and_deployment_separate(tmp_p
     monkeypatch.setattr(sys, "platform", "win32")
     monkeypatch.setitem(sys.modules, "keyring.backends.Windows", SimpleNamespace(WinVaultKeyring=Keyring))
     monkeypatch.setattr("energychain.cloud_cli.CloudClient",
-                        lambda *, origin: {CLOUD_ORIGIN: staging, PRODUCTION_CANARY_ORIGIN: production}[origin])
+                        lambda *, origin: {STAGING_ORIGIN: staging, production_origin: production}[origin])
     monkeypatch.setattr("energychain.cloud_cli._load_workflow",
                         lambda app, cwd: ("# workflow\n", {"id": "test-workflow"}))
-    monkeypatch.delenv("EC_CLOUD_ORIGIN", raising=False)
+    monkeypatch.setenv("EC_CLOUD_ORIGIN", STAGING_ORIGIN)
 
     def run(*args):
         return main(args, cwd=tmp_path)
 
+    assert run("projects", "list") == 1
     assert run("auth", "login", "--no-browser") == 0
     assert run("project", "link", "battery-staging") == 0
     assert run("workflow", "push") == 0
-    monkeypatch.setenv("EC_CLOUD_ORIGIN", PRODUCTION_CANARY_ORIGIN)
+    metadata = tmp_path / ".energychain"
+    legacy_link = metadata / "project.json"
+    legacy_link.write_text(json.dumps({
+        "organization_id": "example-workspace", "project_id": "example-project",
+        "environment": "production", "cloud_origin": production_origin,
+    }))
+    if production_origin == CLOUD_ORIGIN:
+        monkeypatch.delenv("EC_CLOUD_ORIGIN")
+    else:
+        monkeypatch.setenv("EC_CLOUD_ORIGIN", production_origin)
     assert run("projects", "list") == 1
     assert run("auth", "login", "--no-browser") == 0
     assert run("workflow", "push") == 1
@@ -221,14 +233,25 @@ def test_production_origin_keeps_credentials_links_and_deployment_separate(tmp_p
     assert run("workflow", "deploy", "--environment", "staging") == 1
     assert run("workflow", "deploy") == 0
     assert production.deployments == [{"workflow_id": "2" * 32, "revision_id": 3, "environment": "production"}]
-    assert run("--cloud-origin", CLOUD_ORIGIN, "workflow", "deploy") == 0
+    assert run("--cloud-origin", STAGING_ORIGIN, "workflow", "deploy") == 0
     assert staging.requests[-1][2]["environment"] == "staging"
-    assert {json.loads(path.read_text())["cloud_origin"] for path in (tmp_path / ".energychain").iterdir()} == {
-        CLOUD_ORIGIN, PRODUCTION_CANARY_ORIGIN,
-    }
+    for kind in ("project", "workflow"):
+        for origin in (STAGING_ORIGIN, production_origin):
+            path = metadata / f"{kind}.{origin.removeprefix('https://')}.json"
+            assert json.loads(path.read_text())["cloud_origin"] == origin
     assert run("auth", "logout") == 0
-    assert SystemCredentials(PRODUCTION_CANARY_ORIGIN).get() is None
-    assert SystemCredentials().get() == _ACCESS
+    assert SystemCredentials(production_origin).get() is None
+    assert SystemCredentials(STAGING_ORIGIN).get() == _ACCESS
+    assert stored[("EnergyChain Cloud", CLOUD_ORIGIN)] == _ACCESS
+
+
+def test_cli_rejects_the_old_staging_grant_at_the_production_default(monkeypatch, tmp_path, capsys):
+    monkeypatch.delenv("EC_CLOUD_ORIGIN", raising=False)
+    client, credentials = _FixtureAPI(), _Credentials()
+    assert main(("auth", "login", "--no-browser"), client=client, credentials=credentials, cwd=tmp_path) == 1
+    assert credentials.token is None
+    assert client.requests == [("GET", "/v1/projects", None), ("POST", "/v1/auth/revoke", None)]
+    assert "outside the selected production site" in capsys.readouterr().err
 
 
 class _Response(io.BytesIO):
@@ -239,7 +262,7 @@ class _Response(io.BytesIO):
         self.headers["Content-Type"] = "application/json"
 
 
-@pytest.mark.parametrize("origin", [CLOUD_ORIGIN, PRODUCTION_CANARY_ORIGIN])
+@pytest.mark.parametrize("origin", [CLOUD_ORIGIN, STAGING_ORIGIN, PRODUCTION_CANARY_ORIGIN])
 def test_http_device_login_proves_verifier_and_waits_for_slow_down(origin):
     grant = {
         "device_code": "D" * 43, "user_code": "BCDF-GHJK", "expires_in": 60, "interval": 5,
@@ -280,6 +303,7 @@ def test_http_device_login_proves_verifier_and_waits_for_slow_down(origin):
 
 @pytest.mark.parametrize("verification_uri", [
     "https://unrelated.invalid/auth/cli/authorize",
+    STAGING_ORIGIN + "/auth/cli/authorize",
     PRODUCTION_CANARY_ORIGIN + "/auth/cli/authorize",
     CLOUD_ORIGIN + "/auth/cli/authorize?code=unexpected",
 ])

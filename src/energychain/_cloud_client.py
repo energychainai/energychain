@@ -91,12 +91,16 @@ class CloudClient:
 
     def request(self, method: str, path: str, *, token: str | None = None, json_data=None,
                 form: dict | None = None) -> dict | None:
+        if token is not None and not is_token(token):
+            raise CloudError("Stored Cloud authorization is invalid. Run energychain auth login.")
+        return self._request(method, path, token=token, json_data=json_data, form=form)
+
+    def _request(self, method: str, path: str, *, token: str | None, json_data=None,
+                 form: dict | None = None) -> dict | None:
         if not path.startswith("/v1/") or not path.isascii() or any(c.isspace() for c in path):
             raise ValueError("Invalid Cloud API path.")
         headers = {"Accept": "application/json", "Cache-Control": "no-store"}
         if token is not None:
-            if not is_token(token):
-                raise CloudError("Stored Cloud authorization is invalid. Run energychain auth login.")
             headers["Authorization"] = f"Bearer {token}"
         body = None
         if json_data is not None:

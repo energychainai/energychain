@@ -45,20 +45,24 @@ class CloudOpener:
         return response
 
 
-def test_cloud_selection_uses_the_existing_model_gateway_and_local_credential():
-    opener = CloudOpener(CONFIGURED)
+@pytest.mark.parametrize("provider_name,provider_endpoint", [
+    ("openai", "https://api.openai.com/v1/chat/completions"),
+    ("groq", "https://api.groq.com/openai/v1/chat/completions"),
+])
+def test_cloud_selection_uses_the_existing_model_gateway_and_local_credential(provider_name, provider_endpoint):
+    opener = CloudOpener(CONFIGURED | {"provider": provider_name})
     provider = Mock()
     provider.post.return_value = MODEL_REPLY
     other_adapter = Mock()
     traces = []
 
-    def create_openai_gateway(model):
-        return ModelGateway("openai", model, api_key=PROVIDER_KEY, transport=provider,
+    def create_gateway(model):
+        return ModelGateway(provider_name, model, api_key=PROVIDER_KEY, transport=provider,
                             on_trace=traces.append)
 
-    adapter = Mock(side_effect=create_openai_gateway)
+    adapter = Mock(side_effect=create_gateway)
     binding = CloudApplications(APP_ID, APP_TOKEN, opener=opener)
-    gateway = binding.model_gateway({"openai": adapter, "anthropic": other_adapter})
+    gateway = binding.model_gateway({provider_name: adapter, "anthropic": other_adapter})
 
     adapter.assert_called_once_with(MODEL_NAME)
     other_adapter.assert_not_called()
@@ -73,10 +77,11 @@ def test_cloud_selection_uses_the_existing_model_gateway_and_local_credential():
     assert isinstance(gateway, ModelGateway)
     result = gateway.complete(system="Be concise.", user="What was the total?")
     assert result.text == "42 kWh"
+    assert result.provider == provider_name
     assert result.model == MODEL_NAME
     assert result.usage.total_tokens == 14
     (endpoint, payload, headers, _timeout), _ = provider.post.call_args
-    assert endpoint == "https://api.openai.com/v1/chat/completions"
+    assert endpoint == provider_endpoint
     assert payload["model"] == MODEL_NAME
     assert headers["Authorization"] == f"Bearer {PROVIDER_KEY}"
     assert APP_TOKEN not in repr((endpoint, payload, headers))

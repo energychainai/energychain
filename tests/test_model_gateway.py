@@ -30,6 +30,7 @@ class Stub:
     ("huggingface", {"choices": [{"message": {"content": "42 kWh"}}]}, "/chat/completions"),
     ("ollama", {"message": {"content": "42 kWh"}, "done": True}, "/api/chat"),
     ("openai-compatible", {"choices": [{"message": {"content": "42 kWh"}}]}, "/chat/completions"),
+    ("groq", {"choices": [{"message": {"content": "42 kWh"}, "finish_reason": "stop"}]}, "/chat/completions"),
 ])
 def test_provider_contract(provider, response, endpoint):
     transport = Stub(response)
@@ -42,7 +43,7 @@ def test_provider_contract(provider, response, endpoint):
     assert timeout == 30
     assert "Untrusted energy context" in json.dumps(body)
     assert gateway.providers() == ("openai", "anthropic", "gemini", "huggingface",
-                                    "ollama", "openai-compatible")
+                                    "ollama", "openai-compatible", "groq")
     if provider == "ollama":
         assert "Authorization" not in headers
     else:
@@ -61,6 +62,7 @@ SCHEMA = {"type": "object", "properties": {"rating_kw": {"type": "number"}},
     ("gemini", {"candidates": [{"content": {"parts": [{"text": '{"rating_kw":5}'}]},
                                 "finishReason": "STOP"}]}),
     ("ollama", {"message": {"content": '{"rating_kw":5}'}, "done": True}),
+    ("groq", {"choices": [{"message": {"content": '{"rating_kw":5}'}, "finish_reason": "stop"}]}),
 ])
 def test_structured_output(provider, response):
     fake = Stub(response)
@@ -70,6 +72,11 @@ def test_structured_output(provider, response):
     body = fake.calls[0][1]
     if provider == "openai":
         assert body["response_format"]["json_schema"]["strict"] is True
+    elif provider == "groq":
+        assert body["response_format"] == {
+            "type": "json_schema",
+            "json_schema": {"name": "energy_response", "strict": False, "schema": SCHEMA},
+        }
     elif provider == "anthropic":
         assert body["output_config"]["format"]["type"] == "json_schema"
     elif provider == "gemini":
@@ -78,9 +85,10 @@ def test_structured_output(provider, response):
         assert body["format"] == SCHEMA
 
 
-def test_schema_is_verified_locally():
+@pytest.mark.parametrize("provider", ["openai", "groq"])
+def test_schema_is_verified_locally(provider):
     stub = Stub({"choices": [{"message": {"content": '{"rating_kw":"wrong"}'}}]})
-    gw = ModelGateway("openai", "model", api_key="fake", transport=stub)
+    gw = ModelGateway(provider, "model", api_key="fake", transport=stub)
     with pytest.raises(ModelResponseError):
         gw.complete(system="JSON", user="Extract", json_schema=SCHEMA)
     assert len(stub.calls) == 1
@@ -98,6 +106,10 @@ def test_schema_is_verified_locally():
     ("openai-compatible", "https://api.example.com/v1?key=123"),
     ("ollama", "http://remote.example.com:11434"),
     ("openai", "https://third-party.example.com/v1"),
+    ("groq", "http://api.groq.com/openai/v1"),
+    ("groq", "https://api.groq.com.example.org/openai/v1"),
+    ("groq", "https://api.groq.com/v1"),
+    ("groq", "https://api.groq.com:8443/openai/v1"),
 ])
 def test_bad_endpoints_blocked(provider, url):
     with pytest.raises(ModelConfigError):
@@ -107,6 +119,32 @@ def test_bad_endpoints_blocked(provider, url):
 def test_gemini_model_path_injection_rejected():
     with pytest.raises(ModelConfigError):
         ModelGateway("gemini", "../private?key=123", api_key="fake")
+
+
+def test_groq_uses_its_server_credential_and_token_limit(monkeypatch):
+    monkeypatch.delenv("GROQ_API_KEY", raising=False)
+    with pytest.raises(ModelConfigError, match="GROQ_API_KEY"):
+        ModelGateway("groq", "groq-model")
+    monkeypatch.setenv("GROQ_API_KEY", "local-groq-key")
+    transport = Stub({
+        "choices": [{"message": {"content": "42 kWh"}, "finish_reason": "stop"}],
+        "usage": {"prompt_tokens": 8, "completion_tokens": 4, "total_tokens": 12},
+    })
+    gateway = ModelGateway("groq", "groq-model", transport=transport)
+    result = gateway.complete(system="Answer briefly", user="What was the total?", max_output_tokens=37)
+    (url, payload, headers, _), = transport.calls
+    assert url == "https://api.groq.com/openai/v1/chat/completions"
+    assert payload["max_completion_tokens"] == 37
+    assert "max_tokens" not in payload
+    assert headers["Authorization"] == "Bearer local-groq-key"
+    assert (result.provider, result.model, result.usage.total_tokens) == ("groq", "groq-model", 12)
+
+
+def test_groq_tool_call_finish_is_not_treated_as_a_text_completion():
+    transport = Stub({"choices": [{"message": {"content": "preliminary"}, "finish_reason": "tool_calls"}]})
+    gateway = ModelGateway("groq", "groq-model", api_key="fake", transport=transport)
+    with pytest.raises(ModelResponseError, match="incomplete"):
+        gateway.complete(system="Answer briefly", user="What was the total?")
 
 
 def test_no_key_and_no_private_content_in_traces(monkeypatch):

@@ -4,11 +4,12 @@ Introduced in v0.3.0 and included in the current v0.4.0 SDK. The examples below
 use v0.4.0. For an older installation, choose its release in the
 [documentation version selector](https://energychain.app/docs/0.4.0/).
 
-EnergyChain offers a consistent **synchronous TextModel-compatible** API for six provider families. It does not host models, provide API credentials or guarantee any named model is supported by the external service. The caller explicitly selects a provider and model.
+EnergyChain offers a consistent **synchronous TextModel-compatible** API for multiple providers. The caller explicitly selects a provider and a model available to their provider account.
 
 | Provider | Identifier | Credential | Backend | Structured outputs |
 |---|---|---|---|---|
 | OpenAI | openai | OPENAI_API_KEY | official Chat Completions | json_schema response format |
+| Groq | groq | GROQ_API_KEY | [Groq Chat Completions](https://console.groq.com/docs/api-reference#chat-create) | Best-effort JSON schema on supported models with local validation |
 | Anthropic | anthropic | ANTHROPIC_API_KEY | Messages API | output_config.format |
 | Gemini | gemini | GEMINI_API_KEY | Google generateContent | generationConfig.responseFormat |
 | Hugging Face | huggingface | HF_TOKEN | Inference Providers router | model-dependent OpenAI-compatible |
@@ -34,6 +35,11 @@ print(result.text, result.usage.input_tokens, result.duration_ms)
 ~~~
 
 Existing EnergyAgent applications can use model=gateway.as_text_model(). The gateway implements generate(system, user, context).
+
+For Groq, install the current SDK checkout with `python -m pip install -e '.[models]'`.
+Set `GROQ_API_KEY` in your application runtime and pass a model ID available in your
+Groq account as `ModelGateway("groq", model_id)`. The gateway connects to Groq's
+official HTTPS endpoint.
 
 ## Read an application's selection from EnergyChain Cloud
 

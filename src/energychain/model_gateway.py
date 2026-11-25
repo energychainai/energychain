@@ -102,6 +102,7 @@ class JsonTransport:
         return response
 
 
+_GROQ_ENDPOINT = "https://api.groq.com/openai/v1"
 _PROVIDER = {
     "openai": ("https://api.openai.com/v1", "OPENAI_API_KEY"),
     "anthropic": ("https://api.anthropic.com/v1", "ANTHROPIC_API_KEY"),
@@ -109,10 +110,12 @@ _PROVIDER = {
     "huggingface": ("https://router.huggingface.co/v1", "HF_TOKEN"),
     "ollama": ("http://127.0.0.1:11434", None),
     "openai-compatible": (None, "ENERGYCHAIN_LLM_API_KEY"),
+    "groq": (_GROQ_ENDPOINT, "GROQ_API_KEY"),
 }
 _HOSTS = {"openai": "api.openai.com", "anthropic": "api.anthropic.com",
           "gemini": "generativelanguage.googleapis.com",
           "huggingface": "router.huggingface.co"}
+_CHAT_PROVIDERS = frozenset({"openai", "groq", "huggingface", "openai-compatible"})
 
 
 def _endpoint(url: str, provider: str) -> str:
@@ -126,6 +129,8 @@ def _endpoint(url: str, provider: str) -> str:
     elif parsed.scheme != "https":
         raise ModelConfigError("model endpoints must use HTTPS")
     if provider in _HOSTS and host != _HOSTS[provider]:
+        raise ModelConfigError("official endpoint cannot be overridden")
+    if provider == "groq" and url.rstrip("/") != _GROQ_ENDPOINT:
         raise ModelConfigError("official endpoint cannot be overridden")
     if provider != "ollama":
         if host in {"localhost", "localhost.localdomain"} or host.endswith(".local"):
@@ -267,15 +272,15 @@ class ModelGateway:
                             + context if context else "")
         messages = [{"role": "system", "content": system},
                     {"role": "user", "content": user_text}]
-        if self.provider in {"openai", "huggingface", "openai-compatible"}:
+        if self.provider in _CHAT_PROVIDERS:
             headers["Authorization"] = f"Bearer {self.api_key}"
-            max_key = "max_completion_tokens" if self.provider == "openai" else "max_tokens"
+            max_key = "max_completion_tokens" if self.provider in {"openai", "groq"} else "max_tokens"
             body = {"model": self.model, "messages": messages, max_key: tokens}
             if temperature is not None:
                 body["temperature"] = temperature
             if schema is not None:
                 body["response_format"] = {"type": "json_schema", "json_schema":
-                                           {"name": name, "strict": True, "schema": schema}}
+                                           {"name": name, "strict": self.provider != "groq", "schema": schema}}
             return self.base_url+"/chat/completions", headers, body
         if self.provider == "anthropic":
             headers["x-api-key"] = self.api_key or ""
@@ -311,7 +316,7 @@ class ModelGateway:
         if not isinstance(response, Mapping):
             raise ModelResponseError("invalid provider response")
         try:
-            if self.provider in {"openai", "huggingface", "openai-compatible"}:
+            if self.provider in _CHAT_PROVIDERS:
                 choice = response["choices"][0]
                 text = _content(choice["message"]["content"])
                 usage = response.get("usage") or {}
@@ -320,6 +325,8 @@ class ModelGateway:
                 reason = choice.get("finish_reason")
                 if choice["message"].get("refusal") or reason in {"length", "content_filter"}:
                     raise ModelResponseError("provider refused/truncated response")
+                if self.provider == "groq" and reason not in (None, "stop"):
+                    raise ModelResponseError("provider response is incomplete")
             elif self.provider == "anthropic":
                 text = _content(response["content"])
                 usage = response.get("usage") or {}
